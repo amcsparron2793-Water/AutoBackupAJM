@@ -1,8 +1,10 @@
 from pathlib import Path
+from time import sleep
 
 from AutoBackupAJM import AutoBackup
 
 
+# TODO: use the_sandman for sleeping?
 class AutoBackupContinuousCheck(AutoBackup):
     def continuous_monitor(self):
         self._logger.info("continuous backup monitor started...")
@@ -18,10 +20,15 @@ class AutoBackupContinuousCheck(AutoBackup):
                     if not not_due_notified:
                         self._logger.info("no backup necessary")
                         not_due_notified = True
+                self.sleep(10)  # TODO: make this based on self.backup_frequency
 
             except KeyboardInterrupt as e:
                 self._logger.warning("user interrupted backup process, exiting...")
                 break
+
+    def sleep(self, seconds: int):
+        self._logger.debug(f"sleeping for {seconds} seconds...")
+        sleep(seconds)
 
     def _overwrite_protection_check(self):
         return

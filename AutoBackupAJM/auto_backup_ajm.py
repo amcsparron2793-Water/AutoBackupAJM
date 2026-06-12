@@ -56,7 +56,7 @@ class AutoBackup:
     def _check_fallback_logger_config(self, default_logger_name: Optional[str]=None):
         default_logger_name = default_logger_name or self.__class__.__name__
         if self._logger.name == default_logger_name:
-            basicConfig(level='INFO')
+            basicConfig(level='DEBUG')
             self._logger.info('using basic config')
 
     @property
@@ -73,7 +73,7 @@ class AutoBackup:
         self._backup_disabled = value
 
     @property
-    def backup_frequency(self):
+    def backup_frequency(self) -> str:
         """
         @property
         backup_frequency(self)
