@@ -220,7 +220,7 @@ class AutoBackup:
     def backup(self):
         """
         Method to perform a backup of the data. Checks if the data is due for backup and if so,
-        it copies the content of the database file to the full backup path.
+        it copies the content of the file to the full backup path.
         It then prints a success message with the full backup path.
         If the data is not due for backup, it prints a message indicating that no backup is necessary.
         """
@@ -228,6 +228,7 @@ class AutoBackup:
             if (self.due_for_backup and self.source_changed_since_last_backup) or self.force_backup:
                 self._overwrite_protection_check()
                 self.full_backup_path.write_bytes(self.source_path.read_bytes())
+                self._logger.info(f"Backup successful: {self.full_backup_path}")
             else:
                 self._logger.debug("No backup necessary")
         else:
