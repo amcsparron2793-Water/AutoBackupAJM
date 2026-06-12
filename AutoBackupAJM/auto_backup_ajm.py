@@ -1,0 +1,248 @@
+"""
+auto_backup_ajm.py
+
+allows automated backup on a chosen schedule
+
+"""
+
+from _version import __version__
+
+from logging import getLogger, basicConfig
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Union, Optional
+from hashlib import md5
+
+import questionary
+
+
+class AutoBackup:
+    """
+    Class to handle automated backup of a file.
+
+    :ivar source_path: The path to the file to be backed up.
+    :ivar _backup_dir_path_root: The root directory path for storing backup files.
+    :ivar _backup_frequency: The frequency of the backup (daily, weekly, or monthly).
+    :ivar backup_name: The name of the backup file.
+    :ivar _backup_location: The path where the backup will be stored.
+    :ivar most_recent_backup_file: Information about the most recent backup file.
+    :ivar due_for_backup: Flag indicating if a new backup is due based on the backup frequency.
+    :ivar full_backup_path: The full path where the backup file will be saved.
+
+    """
+    DATE_TODAY: datetime = datetime.today().date()
+    VALID_BACKUP_FREQUENCIES = ['daily', 'weekly', 'monthly']
+
+    def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
+        self._backup_disabled = kwargs.get('disable_backup', False)
+        self.backup_disabled = self._backup_disabled
+
+        self._logger = kwargs.get('logger', getLogger(self.__class__.__name__))
+        self._check_fallback_logger_config()
+
+        self.source_path = Path(source_path).resolve()
+        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
+
+        self._backup_frequency = kwargs.get('backup_frequency', 'daily')
+
+        self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
+
+        self._backup_location = self.backup_dir_path_root / Path(self.DATE_TODAY.strftime('%m%d%Y'))
+        self._source_changed_since_last_backup = True
+        self.force_backup = kwargs.get('force_backup', False)
+
+    def _check_fallback_logger_config(self, default_logger_name: Optional[str]=None):
+        default_logger_name = default_logger_name or self.__class__.__name__
+        if self._logger.name == default_logger_name:
+            basicConfig(level='INFO')
+            self._logger.info('using basic config')
+
+    @property
+    def backup_disabled(self):
+        return self._backup_disabled
+
+    @backup_disabled.setter
+    def backup_disabled(self, value):
+        if value != self._backup_disabled:
+            self._backup_disabled = value
+            if self._backup_disabled:
+                self._logger.warning('backup disabled!')
+            elif not self._backup_disabled:
+                self._logger.info('backup enabled!')
+        self._backup_disabled = value
+
+    @property
+    def backup_frequency(self):
+        """
+        @property
+        backup_frequency(self)
+
+        This property method is used to retrieve the backup frequency of the object.
+        It checks if the provided backup frequency is within the valid backup frequencies list
+         and converts it to lowercase before returning the value. If the backup frequency is not valid,
+          it raises a ValueError with a message indicating the invalid backup frequency.
+        """
+        if self._backup_frequency.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
+            self._backup_frequency = self._backup_frequency.lower()
+        else:
+            raise ValueError(f"Invalid backup frequency: {self._backup_frequency.lower()}")
+        return self._backup_frequency
+
+    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
+        make = questionary.confirm(
+            f"{backup_dir_path_root} does not exist, would you like to create it?").ask()
+        if make:
+            return True
+        else:
+            self.backup_disabled = True
+            return False
+
+    def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
+        try:
+            backup_dir_path_root.mkdir(parents=True, exist_ok=True)
+        except (OSError, FileNotFoundError) as e:
+            self._logger.warning(e)
+            self.backup_disabled = True
+
+    @property
+    def backup_dir_path_root(self):
+        """
+        Property to get the root path for the backup directory. If the directory does not exist,
+        it prompts the user to confirm the creation of the directory before returning the path.
+        """
+        if self._backup_dir_path_root.is_dir():
+            pass
+        else:
+            if self._make_backup_dir_path_root_question(self._backup_dir_path_root):
+                self._make_backup_dir_path_root(self._backup_dir_path_root)
+        return self._backup_dir_path_root
+
+    @property
+    def backup_location(self):
+        """
+        Returns the backup location where backups will be stored.
+        """
+        self._backup_location.mkdir(parents=True, exist_ok=True)
+
+        return self._backup_location
+
+    @property
+    def most_recent_backup_file(self) -> Optional[tuple[Path, float]]:
+        """
+        Returns the most recent backup file in the backup directory specified by backup_dir_path_root.
+
+        Returns:
+            Tuple containing the most recent backup file and its creation time, or None if no backup files are found.
+        """
+        file_create_times = [(file, file.stat().st_ctime) for file in self.backup_dir_path_root.rglob(self.backup_name)]
+        try:
+            return max(file_create_times, key=lambda x: x[1])
+        except ValueError:
+            return None
+
+    @property
+    def due_for_backup(self):
+        """
+        Check if a backup is due based on the backup file history and the backup frequency set.
+        Returns True if a backup is due, False otherwise.
+        """
+        # if there are no backup files then no matter what create them
+        if self.most_recent_backup_file is not None:
+            # noinspection PyTypeChecker
+            most_recent_datetime = datetime.fromtimestamp(self.most_recent_backup_file[1])
+        else:
+            return True
+
+        if self.backup_frequency == 'daily':
+            if most_recent_datetime.date() != self.DATE_TODAY:
+                return True
+        elif self.backup_frequency == 'weekly':
+            if most_recent_datetime.isocalendar()[1] != self.DATE_TODAY.isocalendar()[1]:
+                return True
+        elif self.backup_frequency == 'monthly':
+            if most_recent_datetime.month != self.DATE_TODAY.month:
+                return True
+        return False
+
+    @property
+    def full_backup_path(self):
+        """
+        This method returns the full path for the backup by combining the backup location and backup name provided.
+        """
+        return self.backup_location / self.backup_name
+
+    @property
+    def backup_successful(self):
+        """
+        @property
+        Check if a full backup was successful by verifying if the full backup path exists and
+         its creation time is within the last 2 minutes compared to the current time.
+        Returns True if the backup was successful, False otherwise.
+        """
+        if not self.backup_disabled:
+            if (
+                    (
+                            self.full_backup_path.is_file()
+                            and datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
+                            > (datetime.now() - timedelta(minutes=2))
+                    )
+                    or (self.force_backup and self.full_backup_path.is_file())
+            ):
+                print(f"Backup successful: {self.full_backup_path}")
+                return True
+            return False
+        self._logger.warning('backup disabled!')
+        return False
+
+    @property
+    def source_changed_since_last_backup(self):
+        """
+        Indicates whether the database has changed since the last backup was made.
+        If there is no previous backup, this property will be set to True.
+        If the database file's MD5 hash matches that of the most recent backup file's MD5 hash,
+         the property will be set to False, indicating that the database has not changed since the last backup.
+         By default, the property is True.
+        """
+        if self.most_recent_backup_file is None:
+            # if there isn't a backup at all, then no matter what a backup should be done
+            self._source_changed_since_last_backup = True
+        elif (md5(self.source_path.read_bytes()).hexdigest()
+              == md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()):
+            self._source_changed_since_last_backup = False
+            print("source has not changed since last backup")
+        # defaults to True
+        return self._source_changed_since_last_backup
+
+    def backup(self):
+        """
+        Method to perform a backup of the data. Checks if the data is due for backup and if so,
+        it copies the content of the database file to the full backup path.
+        It then prints a success message with the full backup path.
+        If the data is not due for backup, it prints a message indicating that no backup is necessary.
+        """
+        if not self.backup_disabled:
+            if (self.due_for_backup and self.source_changed_since_last_backup) or self.force_backup:
+                self._overwrite_protection_check()
+                self.full_backup_path.write_bytes(self.source_path.read_bytes())
+            else:
+                print("No backup necessary")
+        else:
+            self._logger.warning('backup disabled!')
+
+    def _overwrite_protection_check(self):
+        for f in self.backup_location.iterdir():
+            if f.name == self.backup_name:
+                if not self.force_backup:
+                    raise FileExistsError(f"backups of {self.backup_name} seem to already exist in this directory")
+                if (self.force_backup and
+                        questionary.confirm(f'Do you wish to overwrite {self.backup_name}',
+                                            default=False).ask()):
+                    # FIXME: self.backup_success() doesn't detect this properly, but backup seems to work successfully
+                    pass
+                else:
+                    raise FileExistsError(f"backups of {self.backup_name} seem to already exist in this directory")
+
+
+if __name__ == "__main__":
+    ABDB = AutoBackup(Path('../Fake.db'), Path('./backups'))
+    ABDB.backup()
