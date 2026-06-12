@@ -5,7 +5,10 @@ allows automated backup on a chosen schedule
 
 """
 
-from _version import __version__
+try:
+    from _version import __version__
+except ImportError:
+    from AutoBackupAJM._version import __version__
 
 from logging import getLogger, basicConfig
 from pathlib import Path
@@ -47,8 +50,6 @@ class AutoBackup:
 
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
-        self._backup_location = self.backup_dir_path_root / Path(self.DATE_TODAY.strftime('%m%d%Y'))
-        self._source_changed_since_last_backup = True
         self.force_backup = kwargs.get('force_backup', False)
 
     def _check_fallback_logger_config(self, default_logger_name: Optional[str]=None):
@@ -64,10 +65,9 @@ class AutoBackup:
     @backup_disabled.setter
     def backup_disabled(self, value):
         if value != self._backup_disabled:
-            self._backup_disabled = value
-            if self._backup_disabled:
+            if value:
                 self._logger.warning('backup disabled!')
-            elif not self._backup_disabled:
+            else:
                 self._logger.info('backup enabled!')
         self._backup_disabled = value
 
@@ -122,9 +122,10 @@ class AutoBackup:
         """
         Returns the backup location where backups will be stored.
         """
-        self._backup_location.mkdir(parents=True, exist_ok=True)
+        backup_location = self.backup_dir_path_root / Path(self.DATE_TODAY.strftime('%m%d%Y'))
+        backup_location.mkdir(parents=True, exist_ok=True)
 
-        return self._backup_location
+        return backup_location
 
     @property
     def most_recent_backup_file(self) -> Optional[tuple[Path, float]]:
@@ -205,13 +206,15 @@ class AutoBackup:
         """
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
-            self._source_changed_since_last_backup = True
-        elif (md5(self.source_path.read_bytes()).hexdigest()
-              == md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()):
-            self._source_changed_since_last_backup = False
+            return True
+        
+        source_hash = md5(self.source_path.read_bytes()).hexdigest()
+        backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
+        
+        if source_hash == backup_hash:
             print("source has not changed since last backup")
-        # defaults to True
-        return self._source_changed_since_last_backup
+            return False
+        return True
 
     def backup(self):
         """
