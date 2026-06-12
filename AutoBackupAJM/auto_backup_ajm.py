@@ -189,7 +189,7 @@ class AutoBackup:
                     )
                     or (self.force_backup and self.full_backup_path.is_file())
             ):
-                print(f"Backup successful: {self.full_backup_path}")
+                self._logger.info(f"Backup successful: {self.full_backup_path}")
                 return True
             return False
         self._logger.warning('backup disabled!')
@@ -212,7 +212,7 @@ class AutoBackup:
         backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
         
         if source_hash == backup_hash:
-            print("source has not changed since last backup")
+            self._logger.debug("source has not changed since last backup")
             return False
         return True
 
@@ -228,7 +228,7 @@ class AutoBackup:
                 self._overwrite_protection_check()
                 self.full_backup_path.write_bytes(self.source_path.read_bytes())
             else:
-                print("No backup necessary")
+                self._logger.debug("No backup necessary")
         else:
             self._logger.warning('backup disabled!')
 
