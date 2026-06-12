@@ -19,7 +19,7 @@ from hashlib import md5
 import questionary
 
 
-# TODO: hash and check folders for changes before backup
+# TODO: hash and check folders for changes before backup - multithread this?
 class AutoBackup:
     """
     Class to handle automated backup of a file.
