@@ -5,6 +5,7 @@ from AutoBackupAJM import AutoBackup
 
 
 # TODO: use the_sandman for sleeping?
+# TODO: refresh DATE_TODAY every hour for continuous?
 class AutoBackupContinuousCheck(AutoBackup):
     def continuous_monitor(self):
         self._logger.info("continuous backup monitor started...")
