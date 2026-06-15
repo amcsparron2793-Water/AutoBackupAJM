@@ -4,7 +4,7 @@ from typing import Union, Tuple, Generator, Optional
 
 
 class FileHasher:
-    DEFAULT_BUFFER_SIZE = 8192  # 8kb - could be increased for faster hashing of larger files
+    DEFAULT_BUFFER_SIZE = 1024 ** 2  # 1MB - could be increased for faster hashing of larger files
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         self._input_path = None
@@ -60,6 +60,22 @@ class FileHasher:
         return returned_file_path, self._chunk_file_hash(path)
 
 
+class LargeFileHasher(FileHasher):
+    DEFAULT_BUFFER_SIZE = 1024 ** 3  # 1GB
+    WARNING_BUFFER_SIZE = DEFAULT_BUFFER_SIZE // 2
+
+    def __init__(self, input_path: Union[str, Path], **kwargs):
+        super().__init__(input_path, **kwargs)
+        self._WarnLargeBufferSize()
+        self.input_file_size = self.input_path.stat().st_size
+
+    def _WarnLargeBufferSize(self):
+        if self.buffer_size <= self.__class__.WARNING_BUFFER_SIZE:
+            print("Warning: LargeFileHasher buffer_size is too small for large files, consider using FileHasher")
+        if self.input_file_size <= self.__class__.WARNING_BUFFER_SIZE:
+            print("Warning: LargeFileHasher input_file_size is too small for large files, consider using FileHasher")
+
+
 class DirectoryHasher(FileHasher):
     def _validate_input_path_is_dir(self) -> Path:
         if self.input_path.is_dir():
@@ -76,32 +92,50 @@ class DirectoryHasher(FileHasher):
                 yield self.hash_file(file, **kwargs)
             else:
                 # TODO: add handling for subdirectories
-                print(f"Skipping subdir {file.name}...")
+                print(f"Skipping subdir \'{file.resolve()}\'")
+
+
+class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
+    ...
 
 
 class HasherFactory:
     FILE_HASHER_CLASS = FileHasher
+    LARGE_FILE_HASHER_CLASS = LargeFileHasher
     DIRECTORY_HASHER_CLASS = DirectoryHasher
 
     @classmethod
+    def _is_large_file(cls, file_path: Path) -> bool:
+        return Path(file_path).stat().st_size > cls.LARGE_FILE_HASHER_CLASS.WARNING_BUFFER_SIZE
+
+    @classmethod
+    def inst_file_hasher_class(cls, file_path: Path, **kwargs):
+        if cls._is_large_file(Path(file_path)):
+            return cls.LARGE_FILE_HASHER_CLASS(file_path, **kwargs)
+        return cls.FILE_HASHER_CLASS(file_path, **kwargs)
+
+    @classmethod
+    def inst_directory_hasher_class(cls, directory_path: Path, **kwargs):
+        return cls.DIRECTORY_HASHER_CLASS(directory_path, **kwargs)
+
+    @classmethod
     def inst_hasher_class(cls, input_path: Union[str, Path], **kwargs):
-        if Path(input_path).is_file():
-            return cls.FILE_HASHER_CLASS(input_path, **kwargs)
-        elif Path(input_path).is_dir():
-            return cls.DIRECTORY_HASHER_CLASS(input_path, **kwargs)
+        if not isinstance(input_path, Path):
+            input_path: Path = Path(input_path)
+
+        if input_path.is_file():
+            return cls.inst_file_hasher_class(input_path, **kwargs)
+        elif input_path.is_dir():
+            return cls.inst_directory_hasher_class(input_path, **kwargs)
         else:
             raise ValueError("input_path must be a file or directory")
 
-    @classmethod
-    def validate_input_path(cls, input_path: Optional[Union[str, Path]], *args, **kwargs):
+    def __new__(cls, *args, **kwargs):
+        input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
         if input_path:
             return cls.inst_hasher_class(input_path, **kwargs)
         else:
             raise ValueError("Must specify input_path")
-
-    def __new__(cls, *args, **kwargs):
-        input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
-        return cls.validate_input_path(input_path, *args, **kwargs)
 
 
 def _test_hashing(hasher):
@@ -138,7 +172,3 @@ if __name__ == "__main__":
     else:
         _test_factory_hashing(test_file)
         _test_factory_hashing(test_dir)
-
-
-
-
