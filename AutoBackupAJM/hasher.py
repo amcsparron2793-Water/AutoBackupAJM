@@ -1,3 +1,4 @@
+from abc import ABCMeta, abstractmethod
 from hashlib import md5
 from pathlib import Path
 from typing import Union, Tuple, Generator, Optional
@@ -99,8 +100,41 @@ class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
     ...
 
 
+# TODO: rename to InputPathProcessor?
+class _BaseFactoryHasher(metaclass=ABCMeta):
+    @classmethod
+    @abstractmethod
+    def _process_input_path(cls, input_path: Union[str, Path], **kwargs):
+        raise NotImplementedError("Must implement _process_input_path")
+
+    @classmethod
+    def validate_and_process_input_path(cls, input_path: Union[str, Path], **kwargs):
+        if input_path:
+            return cls._process_input_path(input_path, **kwargs)
+        else:
+            raise ValueError("Must specify input_path")
+
+
+class ArchiveHasher(LargeFileHasher):
+    ARCHIVE_FILE_TYPES = ['.zip', '.tar', '.tar.gz', '.tar.bz2', '.7z', '.rar']
+
+    # TODO: piggy back on validate_and_process_input_path
+    def __new__(cls, *args, **kwargs):
+        input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
+        if not input_path:
+            raise ValueError("Must specify input_path")
+
+        if not isinstance(input_path, Path):
+            input_path: Path = Path(input_path)
+
+        if input_path.suffix in cls.ARCHIVE_FILE_TYPES:
+            return cls(input_path, **kwargs)
+        else:
+            raise ValueError(f"input_path must be an archive file, not {input_path.suffix}")
+
+
 # TODO: if file is archive, option to unzip and hash contents
-class HasherFactory:
+class HasherFactory(_BaseFactoryHasher):
     FILE_HASHER_CLASS = FileHasher
     LARGE_FILE_HASHER_CLASS = LargeFileHasher
     DIRECTORY_HASHER_CLASS = DirectoryHasher
@@ -131,12 +165,13 @@ class HasherFactory:
         else:
             raise ValueError("input_path must be a file or directory")
 
+    @classmethod
+    def _process_input_path(cls, input_path: Union[str, Path], **kwargs):
+        return cls.inst_hasher_class(input_path, **kwargs)
+
     def __new__(cls, *args, **kwargs):
         input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
-        if input_path:
-            return cls.inst_hasher_class(input_path, **kwargs)
-        else:
-            raise ValueError("Must specify input_path")
+        return cls.validate_and_process_input_path(input_path, **kwargs)
 
 
 def _test_hashing(hasher):
