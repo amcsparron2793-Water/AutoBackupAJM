@@ -40,21 +40,27 @@ class FileHasher:
         else:
             raise ValueError(f"self.input_path must be a file, to hash a directory use hash_directory")
 
-    def hash_file(self, file_path: Union[str, Path, None] = None) -> str:
-        path = self.input_path if file_path is None else Path(file_path)
+    @staticmethod
+    def _get_return_path(file: Path, **kwargs):
+        return_path = kwargs.get("return_path", True)
+        returned_path = file.resolve() if return_path else file.resolve().as_posix()
+        print(f'returning: {type(returned_path).__name__}')
+        return returned_path
 
-        path = self._validate_input_path_is_file(path)
-        return self._chunk_file_hash(path)
+    def _setup_hash_path(self, file_path: Union[str, Path, None] = None, **kwargs) -> Tuple[Path, Union[Path, str]]:
+        path_to_hash = self.input_path if file_path is None else Path(file_path)
+
+        path_to_hash = self._validate_input_path_is_file(path_to_hash)
+        returned_file_path = self._get_return_path(path_to_hash, **kwargs)
+        return path_to_hash, returned_file_path
+
+    def hash_file(self, file_path: Union[str, Path, None] = None, **kwargs) -> Tuple[Union[Path, str], str]:
+        path, returned_file_path = self._setup_hash_path(file_path, **kwargs)
+
+        return returned_file_path, self._chunk_file_hash(path)
 
 
 class DirectoryHasher(FileHasher):
-    @staticmethod
-    def _get_yielded_file(file: Path, **kwargs):
-        yield_path = kwargs.get("yield_path", True)
-        yielded_file = file.resolve() if yield_path else file.resolve().as_posix()
-        print(f'yielding: {type(yielded_file).__name__}')
-        return yielded_file
-
     def _validate_input_path_is_dir(self) -> Path:
         if self.input_path.is_dir():
             dir_path = self.input_path
@@ -67,8 +73,7 @@ class DirectoryHasher(FileHasher):
 
         for file in dir_path.iterdir():
             if file.is_file():
-                yielded_file = self._get_yielded_file(file, **kwargs)
-                yield yielded_file, self.hash_file(file)
+                yield self.hash_file(file, **kwargs)
             else:
                 # TODO: add handling for subdirectories
                 print(f"Skipping subdir {file.name}...")
@@ -90,7 +95,7 @@ class HasherFactory:
     @classmethod
     def validate_input_path(cls, input_path: Optional[Union[str, Path]], *args, **kwargs):
         if input_path:
-            return cls.inst_hasher_class(input_path, *args, **kwargs)
+            return cls.inst_hasher_class(input_path, **kwargs)
         else:
             raise ValueError("Must specify input_path")
 
