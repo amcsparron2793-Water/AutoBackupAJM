@@ -99,6 +99,7 @@ class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
     ...
 
 
+# TODO: if file is archive, option to unzip and hash contents
 class HasherFactory:
     FILE_HASHER_CLASS = FileHasher
     LARGE_FILE_HASHER_CLASS = LargeFileHasher

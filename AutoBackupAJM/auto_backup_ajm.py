@@ -205,11 +205,15 @@ class AutoBackup:
          the property will be set to False, indicating that the database has not changed since the last backup.
          By default, the property is True.
         """
+        # TODO: to be reworked with hasher.py implementation
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
         
         source_hash = md5(self.source_path.read_bytes()).hexdigest()
+
+        # TODO: if archive - unzip backup, hash contents, then compare??
+        # TODO: compare paths also for unchanged but moved files?
         backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
         
         if source_hash == backup_hash:
