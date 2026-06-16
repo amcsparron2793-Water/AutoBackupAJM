@@ -61,22 +61,6 @@ class FileHasher:
         return returned_file_path, self._chunk_file_hash(path)
 
 
-class LargeFileHasher(FileHasher):
-    DEFAULT_BUFFER_SIZE = 1024 ** 3  # 1GB
-    WARNING_BUFFER_SIZE = DEFAULT_BUFFER_SIZE // 2
-
-    def __init__(self, input_path: Union[str, Path], **kwargs):
-        super().__init__(input_path, **kwargs)
-        self._WarnLargeBufferSize()
-        self.input_file_size = self.input_path.stat().st_size
-
-    def _WarnLargeBufferSize(self):
-        if self.buffer_size <= self.__class__.WARNING_BUFFER_SIZE:
-            print("Warning: LargeFileHasher buffer_size is too small for large files, consider using FileHasher")
-        if self.input_file_size <= self.__class__.WARNING_BUFFER_SIZE:
-            print("Warning: LargeFileHasher input_file_size is too small for large files, consider using FileHasher")
-
-
 class DirectoryHasher(FileHasher):
     def _validate_input_path_is_dir(self) -> Path:
         if self.input_path.is_dir():
@@ -94,6 +78,22 @@ class DirectoryHasher(FileHasher):
             else:
                 # TODO: add handling for subdirectories
                 print(f"Skipping subdir \'{file.resolve()}\'")
+
+
+class LargeFileHasher(FileHasher):
+    DEFAULT_BUFFER_SIZE = 1024 ** 3  # 1GB
+    WARNING_BUFFER_SIZE = DEFAULT_BUFFER_SIZE // 2
+
+    def __init__(self, input_path: Union[str, Path], **kwargs):
+        super().__init__(input_path, **kwargs)
+        self._WarnLargeBufferSize()
+        self.input_file_size = self.input_path.stat().st_size
+
+    def _WarnLargeBufferSize(self):
+        if self.buffer_size <= self.__class__.WARNING_BUFFER_SIZE:
+            print("Warning: LargeFileHasher buffer_size is too small for large files, consider using FileHasher")
+        if self.input_file_size <= self.__class__.WARNING_BUFFER_SIZE:
+            print("Warning: LargeFileHasher input_file_size is too small for large files, consider using FileHasher")
 
 
 class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
