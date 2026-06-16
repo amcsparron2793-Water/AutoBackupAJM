@@ -66,8 +66,8 @@ class LargeFileHasher(FileHasher):
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         super().__init__(input_path, **kwargs)
-        self._WarnLargeBufferSize()
         self.input_file_size = self.input_path.stat().st_size
+        self._WarnLargeBufferSize()
 
     def _WarnLargeBufferSize(self):
         if self.buffer_size <= self.__class__.WARNING_BUFFER_SIZE:
