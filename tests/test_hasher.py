@@ -1,10 +1,10 @@
 import pytest
-from pathlib import Path
 import hashlib
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.factory import HasherFactory
 from AutoBackupAJM.Hasher.other_hashers import ArchiveHasher
+
 
 @pytest.fixture
 def temp_file(tmp_path):
@@ -13,6 +13,7 @@ def temp_file(tmp_path):
     f.write_bytes(content)
     expected_hash = hashlib.md5(content).hexdigest()
     return f, expected_hash
+
 
 @pytest.fixture
 def temp_dir(tmp_path):
@@ -28,12 +29,12 @@ def temp_dir(tmp_path):
     f3.write_bytes(b"content3")
     return d
 
+
 class TestFileHasher:
     def test_init(self, temp_file):
         path, _ = temp_file
         hasher = FileHasher(path)
         assert hasher.input_path == path
-        
         hasher_str = FileHasher(str(path))
         assert hasher_str.input_path == path
 
@@ -63,6 +64,7 @@ class TestFileHasher:
         with pytest.raises(ValueError, match="self.input_path must be a file"):
             hasher.hash_file()
 
+
 class TestLargeFileHasher:
     def test_init_and_warnings(self, temp_file, capsys):
         path, _ = temp_file
@@ -82,6 +84,7 @@ class TestLargeFileHasher:
         captured = capsys.readouterr()
         assert "Warning: LargeFileHasher buffer_size is too small" in captured.out
 
+
 class TestDirectoryHasher:
     def test_hash_directory(self, temp_dir):
         hasher = DirectoryHasher(temp_dir)
@@ -97,6 +100,7 @@ class TestDirectoryHasher:
         hasher = DirectoryHasher(path)
         with pytest.raises(ValueError, match="self.input_path must be a directory"):
             list(hasher.hash_directory())
+
 
 class TestHasherFactory:
     def test_factory_file(self, temp_file):
@@ -117,6 +121,7 @@ class TestHasherFactory:
     def test_factory_no_input(self):
         with pytest.raises(ValueError, match="Must specify input_path"):
             HasherFactory()
+
 
 class TestArchiveHasher:
     def test_init_archive(self, tmp_path):
