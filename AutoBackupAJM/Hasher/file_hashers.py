@@ -25,6 +25,9 @@ class FileHasher:
         else:
             raise TypeError("input_path must be a string or a Path object")
 
+        if not self._input_path.exists():
+            raise FileNotFoundError(f"self.input_path ({self._input_path}) must exist")
+
     def _chunk_file_hash(self, path: Path):
         with open(path, 'rb') as file:
             file_hash = md5()
