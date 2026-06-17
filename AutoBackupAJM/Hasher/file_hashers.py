@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Union, Tuple
 from hashlib import md5
 
-
+# TODO: setup logging for when factory isnt used - then use EasyLoggerAJM?
 class FileHasher:
     DEFAULT_BUFFER_SIZE = 1024 ** 2  # 1MB - could be increased for faster hashing of larger files
 
