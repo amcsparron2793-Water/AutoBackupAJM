@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Union
 
+from AutoBackupAJM.Hasher.directory_hashers import LargeDirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import LargeFileHasher
 
 
@@ -28,3 +29,16 @@ class ArchiveFileHasher(LargeFileHasher):
         # raise NotImplementedError("hash_archive is not yet implemented")
 
 
+class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
+    def hash_archive(self, **kwargs):
+        unzip_and_hash = kwargs.get("unzip_and_hash_contents", self.unzip_and_hash_contents)
+        if unzip_and_hash:
+            self.hash_directory(**kwargs)
+        else:
+            raise NotImplementedError("unzip_and_hash_contents is not yet implemented")
+
+
+if __name__ == "__main__":
+    AH = ArchiveFileHasher('../../Misc_Project_Files/HostedFeatureStorage.zip')
+    archive_hash = AH.hash_archive(unzip_and_hash_contents=False)
+    print(archive_hash)
