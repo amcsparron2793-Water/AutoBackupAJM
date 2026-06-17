@@ -174,6 +174,12 @@ class AutoBackup:
         return self.backup_location / self.backup_name
 
     @property
+    def backup_is_recent(self):
+        backup_created_at = datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
+        recent_cutoff = (datetime.now() - timedelta(minutes=2))
+        return backup_created_at > recent_cutoff
+
+    @property
     def backup_successful(self):
         """
         @property
@@ -185,8 +191,7 @@ class AutoBackup:
             if (
                     (
                             self.full_backup_path.is_file()
-                            and datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
-                            > (datetime.now() - timedelta(minutes=2))
+                            and self.backup_is_recent
                     )
                     or (self.force_backup and self.full_backup_path.is_file())
             ):
