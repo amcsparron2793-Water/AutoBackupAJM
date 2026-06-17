@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from logging import getLogger, basicConfig
 from pathlib import Path
 from typing import Union, Optional
 
@@ -26,6 +27,13 @@ class HasherFactory(_BaseFactoryHasher):
     LARGE_FILE_HASHER_CLASS = LargeFileHasher
     DIRECTORY_HASHER_CLASS = DirectoryHasher
     ARCHIVE_HASHER_CLASS = None  # TODO: implement
+
+    @classmethod
+    def _setup_logging(cls, **kwargs):
+        logger = kwargs.pop("logger", getLogger(cls.__name__))
+        if not logger or not logger.hasHandlers():
+            basicConfig(level='INFO')
+        return logger
 
     @classmethod
     def _is_large_file(cls, file_path: Path) -> bool:
@@ -59,4 +67,5 @@ class HasherFactory(_BaseFactoryHasher):
 
     def __new__(cls, *args, **kwargs):
         input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
+        kwargs["logger"] = cls._setup_logging(**kwargs)
         return cls.validate_and_process_input_path(input_path, **kwargs)

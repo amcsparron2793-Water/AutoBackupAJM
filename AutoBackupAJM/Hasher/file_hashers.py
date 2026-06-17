@@ -1,3 +1,4 @@
+from logging import Logger, getLogger
 from pathlib import Path
 from typing import Union, Tuple
 from hashlib import md5
@@ -8,6 +9,8 @@ class FileHasher:
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         self._input_path = None
+        self._logger: Logger = kwargs.get("logger", getLogger(self.__class__.__name__))
+        self._logger.info("Initializing FileHasher")
 
         self.buffer_size = kwargs.get("buffer_size", self.__class__.DEFAULT_BUFFER_SIZE)
         self.input_path = input_path
@@ -33,7 +36,7 @@ class FileHasher:
             file_hash = md5()
             while chunk := file.read(self.buffer_size):
                 file_hash.update(chunk)
-            print(f"Hashing {path} complete...")
+            self._logger.info(f"Hashing {path} complete...")
             return file_hash.hexdigest()
 
     @staticmethod
@@ -43,11 +46,10 @@ class FileHasher:
         else:
             raise ValueError(f"self.input_path must be a file, to hash a directory use hash_directory")
 
-    @staticmethod
-    def _get_return_path(file: Path, **kwargs):
+    def _get_return_path(self, file: Path, **kwargs):
         return_path = kwargs.get("return_path", True)
         returned_path = file.resolve() if return_path else file.resolve().as_posix()
-        print(f'returning: {type(returned_path).__name__}')
+        self._logger.info(f'returning: {type(returned_path).__name__}')
         return returned_path
 
     def _setup_hash_path(self, file_path: Union[str, Path, None] = None, **kwargs) -> Tuple[Path, Union[Path, str]]:
@@ -64,6 +66,10 @@ class FileHasher:
 
 
 class LargeFileHasher(FileHasher):
+    SMALL_BUFFER_SIZE_WARNING = ("Warning: LargeFileHasher buffer_size is too small for large files, "
+                                 "consider using FileHasher")
+    SMALL_FILE_SIZE_WARNING = ("Warning: LargeFileHasher input_file_size is too small for large files,"
+                               " consider using FileHasher")
     DEFAULT_BUFFER_SIZE = 1024 ** 3  # 1GB
     WARNING_BUFFER_SIZE = DEFAULT_BUFFER_SIZE // 2
 
@@ -74,6 +80,12 @@ class LargeFileHasher(FileHasher):
 
     def _WarnLargeBufferSize(self):
         if self.buffer_size <= self.__class__.WARNING_BUFFER_SIZE:
-            print("Warning: LargeFileHasher buffer_size is too small for large files, consider using FileHasher")
+            self._logger.warning(self.__class__.SMALL_BUFFER_SIZE_WARNING)
         if self.input_file_size <= self.__class__.WARNING_BUFFER_SIZE:
-            print("Warning: LargeFileHasher input_file_size is too small for large files, consider using FileHasher")
+            self._logger.warning(self.__class__.SMALL_FILE_SIZE_WARNING)
+
+
+if __name__ == "__main__":
+    file_hasher = LargeFileHasher(Path("../../README.md"))
+    fh = file_hasher.hash_file()
+    print(fh)
