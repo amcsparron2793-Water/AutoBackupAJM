@@ -1,2 +1,3 @@
 from AutoBackupAJM.auto_backup_ajm import AutoBackup
+from AutoBackupAJM import Hasher
 # from AutoBackupAJM.auto_backup_continuous_check import AutoBackupContinuousCheck

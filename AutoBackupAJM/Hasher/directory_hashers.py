@@ -19,6 +19,8 @@ class DirectoryHasher(FileHasher):
         # TODO: walk needs to be relative to the root dir
         #  since the root dir is always going to be
         #  different since the source is from a backup.
+
+        # TODO: multithreading?
         for current_dir, subdirs, files in dir_path.walk(): #dir_path.iterdir():
             if current_dir.name.startswith("__"):
                 continue

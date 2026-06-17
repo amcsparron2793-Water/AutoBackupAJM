@@ -25,6 +25,7 @@ class HasherFactory(_BaseFactoryHasher):
     FILE_HASHER_CLASS = FileHasher
     LARGE_FILE_HASHER_CLASS = LargeFileHasher
     DIRECTORY_HASHER_CLASS = DirectoryHasher
+    ARCHIVE_HASHER_CLASS = None  # TODO: implement
 
     @classmethod
     def _is_large_file(cls, file_path: Path) -> bool:
