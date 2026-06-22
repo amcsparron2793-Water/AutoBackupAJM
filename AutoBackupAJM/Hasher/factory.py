@@ -7,8 +7,14 @@ from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 
 
-# TODO: rename to InputPathProcessor?
 class _BaseFactoryHasher(metaclass=ABCMeta):
+    @classmethod
+    def _setup_logging(cls, **kwargs):
+        logger = kwargs.pop("logger", getLogger(cls.__name__))
+        if not logger or not logger.hasHandlers():
+            basicConfig(level='INFO')
+        return logger
+
     @classmethod
     @abstractmethod
     def _process_input_path(cls, input_path: Union[str, Path], **kwargs):
@@ -27,13 +33,6 @@ class HasherFactory(_BaseFactoryHasher):
     LARGE_FILE_HASHER_CLASS = LargeFileHasher
     DIRECTORY_HASHER_CLASS = DirectoryHasher
     ARCHIVE_HASHER_CLASS = None  # TODO: implement
-
-    @classmethod
-    def _setup_logging(cls, **kwargs):
-        logger = kwargs.pop("logger", getLogger(cls.__name__))
-        if not logger or not logger.hasHandlers():
-            basicConfig(level='INFO')
-        return logger
 
     @classmethod
     def _is_large_file(cls, file_path: Path) -> bool:
@@ -69,3 +68,7 @@ class HasherFactory(_BaseFactoryHasher):
         input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
         kwargs["logger"] = cls._setup_logging(**kwargs)
         return cls.validate_and_process_input_path(input_path, **kwargs)
+
+
+if __name__ == "__main__":
+    print(HasherFactory(input_path="../"))

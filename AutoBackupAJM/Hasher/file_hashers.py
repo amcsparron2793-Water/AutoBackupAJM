@@ -1,16 +1,20 @@
-from logging import Logger, getLogger
+from logging import Logger, getLogger, basicConfig
 from pathlib import Path
 from typing import Union, Tuple
 from hashlib import md5
 
-# TODO: setup logging for when factory isnt used - then use EasyLoggerAJM?
+
 class FileHasher:
     DEFAULT_BUFFER_SIZE = 1024 ** 2  # 1MB - could be increased for faster hashing of larger files
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         self._input_path = None
+
         self._logger: Logger = kwargs.get("logger", getLogger(self.__class__.__name__))
-        self._logger.info("Initializing FileHasher")
+        if not self._logger or not self._logger.hasHandlers():
+            basicConfig(level='INFO')
+
+        self._logger.info(f"Initializing {self.__class__.__name__}")
 
         self.buffer_size = kwargs.get("buffer_size", self.__class__.DEFAULT_BUFFER_SIZE)
         self.input_path = input_path
@@ -49,7 +53,7 @@ class FileHasher:
     def _get_return_path(self, file: Path, **kwargs):
         return_path = kwargs.get("return_path", True)
         returned_path = file.resolve() if return_path else file.resolve().as_posix()
-        self._logger.info(f'returning: {type(returned_path).__name__}')
+        self._logger.debug(f'returning: {type(returned_path).__name__}')
         return returned_path
 
     def _setup_hash_path(self, file_path: Union[str, Path, None] = None, **kwargs) -> Tuple[Path, Union[Path, str]]:
@@ -86,6 +90,6 @@ class LargeFileHasher(FileHasher):
 
 
 if __name__ == "__main__":
-    file_hasher = LargeFileHasher(Path("../../README.md"))
+    file_hasher = FileHasher(Path("../../README.md"))
     fh = file_hasher.hash_file()
     print(fh)
