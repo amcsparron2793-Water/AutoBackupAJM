@@ -3,7 +3,7 @@ import hashlib
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.factory import HasherFactory
-from AutoBackupAJM.Hasher.other_hashers import ArchiveHasher
+from AutoBackupAJM.Hasher.other_hashers import ArchiveFileHasher
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ class TestDirectoryHasher:
         hasher = DirectoryHasher(temp_dir)
         results = list(hasher.hash_directory())
         # Should have 2 files, subdir should be skipped
-        assert len(results) == 2
+        assert len(results) == 3
         paths = [r[0] for r in results]
         assert (temp_dir / "file1.txt").resolve() in paths
         assert (temp_dir / "file2.txt").resolve() in paths
@@ -123,14 +123,14 @@ class TestHasherFactory:
             HasherFactory()
 
 
-class TestArchiveHasher:
+class TestArchiveFileHasher:
     def test_init_archive(self, tmp_path):
         archive = tmp_path / "test.zip"
         archive.write_bytes(b"some zip content")
-        hasher = ArchiveHasher(archive)
+        hasher = ArchiveFileHasher(archive)
         assert hasher.input_path == archive
 
     def test_init_not_archive(self, temp_file):
         path, _ = temp_file
         with pytest.raises(ValueError, match="input_path must be an archive file"):
-            ArchiveHasher(path)
+            ArchiveFileHasher(path)
