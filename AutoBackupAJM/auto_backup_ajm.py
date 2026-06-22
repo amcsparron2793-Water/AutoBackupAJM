@@ -53,7 +53,7 @@ class AutoBackup:
 
         self.force_backup = kwargs.get('force_backup', False)
 
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str]=None):
+    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
         default_logger_name = default_logger_name or self.__class__.__name__
         if self._logger.name == default_logger_name:
             basicConfig(level='INFO')
@@ -214,13 +214,13 @@ class AutoBackup:
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
-        
+
         source_hash = md5(self.source_path.read_bytes()).hexdigest()
 
         # TODO: if archive - unzip backup, hash contents, then compare??
         # TODO: compare paths also for unchanged but moved files?
         backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
-        
+
         if source_hash == backup_hash:
             self._logger.debug("source has not changed since last backup")
             return False
