@@ -1,20 +1,13 @@
 from abc import ABCMeta, abstractmethod
-from logging import getLogger, basicConfig
 from pathlib import Path
 from typing import Union, Optional
 
+from AutoBackupAJM.Hasher import _BaseHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 
 
-class _BaseFactoryHasher(metaclass=ABCMeta):
-    @classmethod
-    def _setup_logging(cls, **kwargs):
-        logger = kwargs.pop("logger", getLogger(cls.__name__))
-        if not logger or not logger.hasHandlers():
-            basicConfig(level='INFO')
-        return logger
-
+class _BaseFactoryHasher(_BaseHasher, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def _process_input_path(cls, input_path: Union[str, Path], **kwargs):
