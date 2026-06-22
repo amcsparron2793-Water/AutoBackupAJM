@@ -13,8 +13,10 @@ class _BaseHasher:
     @classmethod
     def _setup_logging(cls, **kwargs):
         logger = kwargs.pop("logger", getLogger(cls.__name__))
+        basic_config_level = kwargs.pop("basic_config_level", 'INFO')
+
         if not logger or not logger.hasHandlers():
-            basicConfig(level='INFO')
+            basicConfig(level=basic_config_level)
         return logger
 
 
