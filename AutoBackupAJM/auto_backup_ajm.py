@@ -34,8 +34,8 @@ class AutoBackup:
     :ivar full_backup_path: The full path where the backup file will be saved.
 
     """
-    DATE_TODAY: datetime = datetime.today().date()
-    VALID_BACKUP_FREQUENCIES = ['daily', 'weekly', 'monthly']
+    DATE_TODAY: datetime = datetime.today()
+    VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_disabled = kwargs.get('disable_backup', False)
@@ -123,7 +123,12 @@ class AutoBackup:
         """
         Returns the backup location where backups will be stored.
         """
-        backup_location = self.backup_dir_path_root / Path(self.DATE_TODAY.strftime('%m%d%Y'))
+        if self.backup_frequency != 'hourly':
+            date_dir = Path(self.DATE_TODAY.strftime('%m%d%Y'))
+        else:
+            date_dir = Path(self.DATE_TODAY.strftime('%m%d%Y_%H00'))
+
+        backup_location = self.backup_dir_path_root / date_dir
         backup_location.mkdir(parents=True, exist_ok=True)
 
         return backup_location
@@ -154,8 +159,13 @@ class AutoBackup:
             most_recent_datetime = datetime.fromtimestamp(self.most_recent_backup_file[1])
         else:
             return True
-
-        if self.backup_frequency == 'daily':
+        if self.backup_frequency == 'hourly':
+            if (
+                    (most_recent_datetime.hour != self.DATE_TODAY.hour)
+                    and (most_recent_datetime.date() == self.DATE_TODAY.date())
+            ):
+                return True
+        elif self.backup_frequency == 'daily':
             if most_recent_datetime.date() != self.DATE_TODAY:
                 return True
         elif self.backup_frequency == 'weekly':
@@ -258,5 +268,7 @@ class AutoBackup:
 
 
 if __name__ == "__main__":
-    ABDB = AutoBackup(Path('../Fake.db'), Path('./backups'))
+    ABDB = AutoBackup(Path('../Misc_Project_Files/test_file.txt'),
+                      Path('../Misc_Project_Files/test_backups'),
+                      backup_frequency='hourly')
     ABDB.backup()
