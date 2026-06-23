@@ -11,6 +11,7 @@ try:
 except ImportError:
     from AutoBackupAJM._version import __version__
 
+from enum import Enum
 from logging import getLogger, basicConfig
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -18,6 +19,13 @@ from typing import Union, Optional
 from hashlib import md5
 
 import questionary
+
+# TODO: implement - IntEmum and hours instead of strs?
+class ValidBackupFrequency(Enum):
+    HOURLY = 'hourly'
+    DAILY = 'daily'
+    WEEKLY = 'weekly'
+    MONTHLY = 'monthly'
 
 
 # TODO: implement Hasher classes
