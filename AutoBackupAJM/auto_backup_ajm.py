@@ -39,6 +39,7 @@ class AutoBackup:
     VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
+        self._backup_frequency = None
         self._backup_disabled = kwargs.get('disable_backup', False)
         self.backup_disabled = self._backup_disabled
 
@@ -48,7 +49,7 @@ class AutoBackup:
         self.source_path = Path(source_path).resolve()
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
 
-        self._backup_frequency = kwargs.get('backup_frequency', 'daily')
+        self.backup_frequency = kwargs.get('backup_frequency', 'daily')
 
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
@@ -84,11 +85,16 @@ class AutoBackup:
          and converts it to lowercase before returning the value. If the backup frequency is not valid,
           it raises a ValueError with a message indicating the invalid backup frequency.
         """
-        if self._backup_frequency.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
+        if self._backup_frequency:
             self._backup_frequency = self._backup_frequency.lower()
-        else:
-            raise ValueError(f"Invalid backup frequency: {self._backup_frequency.lower()}")
         return self._backup_frequency
+
+    @backup_frequency.setter
+    def backup_frequency(self, value: str):
+        if value.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
+            self._backup_frequency = value.lower()
+        else:
+            raise ValueError(f"Invalid backup frequency: {value.lower()}")
 
     def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
         make = questionary.confirm(
