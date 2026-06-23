@@ -4,6 +4,7 @@ auto_backup_ajm.py
 allows automated backup on a chosen schedule
 
 """
+from prompt_toolkit.output.win32 import NoConsoleScreenBufferError
 
 try:
     from _version import __version__
@@ -56,7 +57,7 @@ class AutoBackup:
     def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
         default_logger_name = default_logger_name or self.__class__.__name__
         if self._logger.name == default_logger_name:
-            basicConfig(level='INFO')
+            basicConfig(level='DEBUG')
             self._logger.info('using basic config')
 
     @property
@@ -124,9 +125,9 @@ class AutoBackup:
         Returns the backup location where backups will be stored.
         """
         if self.backup_frequency != 'hourly':
-            date_dir = Path(self.DATE_TODAY.strftime('%m%d%Y'))
+            date_dir = Path(self.__class__.DATE_TODAY.strftime('%m%d%Y'))
         else:
-            date_dir = Path(self.DATE_TODAY.strftime('%m%d%Y_%H00'))
+            date_dir = Path(self.__class__.DATE_TODAY.strftime('%m%d%Y_%H00'))
 
         backup_location = self.backup_dir_path_root / date_dir
         backup_location.mkdir(parents=True, exist_ok=True)
@@ -161,18 +162,18 @@ class AutoBackup:
             return True
         if self.backup_frequency == 'hourly':
             if (
-                    (most_recent_datetime.hour != self.DATE_TODAY.hour)
-                    and (most_recent_datetime.date() == self.DATE_TODAY.date())
+                    (most_recent_datetime.hour != self.__class__.DATE_TODAY.hour)
+                    and (most_recent_datetime.date() == self.__class__.DATE_TODAY.date())
             ):
                 return True
         elif self.backup_frequency == 'daily':
-            if most_recent_datetime.date() != self.DATE_TODAY:
+            if most_recent_datetime.date() != self.__class__.DATE_TODAY:
                 return True
         elif self.backup_frequency == 'weekly':
-            if most_recent_datetime.isocalendar()[1] != self.DATE_TODAY.isocalendar()[1]:
+            if most_recent_datetime.isocalendar()[1] != self.__class__.DATE_TODAY.isocalendar()[1]:
                 return True
         elif self.backup_frequency == 'monthly':
-            if most_recent_datetime.month != self.DATE_TODAY.month:
+            if most_recent_datetime.month != self.__class__.DATE_TODAY.month:
                 return True
         return False
 
@@ -254,17 +255,20 @@ class AutoBackup:
             self._logger.warning('backup disabled!')
 
     def _overwrite_protection_check(self):
+        FEE_text = f"backups of {self.backup_name} seem to already exist in this directory"
+        overwrite_question_text = f'Do you wish to overwrite {self.backup_name}'
+
         for f in self.backup_location.iterdir():
             if f.name == self.backup_name:
                 if not self.force_backup:
-                    raise FileExistsError(f"backups of {self.backup_name} seem to already exist in this directory")
-                if (self.force_backup and
-                        questionary.confirm(f'Do you wish to overwrite {self.backup_name}',
-                                            default=False).ask()):
-                    # FIXME: self.backup_success() doesn't detect this properly, but backup seems to work successfully
+                    raise FileExistsError(FEE_text)
+                if self.force_backup and questionary.confirm(overwrite_question_text,
+                                                             default=False).ask():
+                    # FIXME: self.backup_success() doesn't detect this properly,
+                    #  but backup seems to work successfully
                     pass
                 else:
-                    raise FileExistsError(f"backups of {self.backup_name} seem to already exist in this directory")
+                    raise FileExistsError(FEE_text)
 
 
 if __name__ == "__main__":
