@@ -19,7 +19,7 @@ from hashlib import md5
 import questionary
 
 
-# TODO: hash and check folders for changes before backup - multithread this?
+# TODO: implement Hasher classes
 class AutoBackup:
     """
     Class to handle automated backup of a file.
@@ -53,7 +53,7 @@ class AutoBackup:
 
         self.force_backup = kwargs.get('force_backup', False)
 
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str]=None):
+    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
         default_logger_name = default_logger_name or self.__class__.__name__
         if self._logger.name == default_logger_name:
             basicConfig(level='DEBUG')
@@ -174,6 +174,12 @@ class AutoBackup:
         return self.backup_location / self.backup_name
 
     @property
+    def backup_is_recent(self):
+        backup_created_at = datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
+        recent_cutoff = (datetime.now() - timedelta(minutes=2))
+        return backup_created_at > recent_cutoff
+
+    @property
     def backup_successful(self):
         """
         @property
@@ -185,8 +191,7 @@ class AutoBackup:
             if (
                     (
                             self.full_backup_path.is_file()
-                            and datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
-                            > (datetime.now() - timedelta(minutes=2))
+                            and self.backup_is_recent
                     )
                     or (self.force_backup and self.full_backup_path.is_file())
             ):
@@ -205,13 +210,17 @@ class AutoBackup:
          the property will be set to False, indicating that the database has not changed since the last backup.
          By default, the property is True.
         """
+        # TODO: to be reworked with hasher.py implementation
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
-        
+
         source_hash = md5(self.source_path.read_bytes()).hexdigest()
+
+        # TODO: if archive - unzip backup, hash contents, then compare??
+        # TODO: compare paths also for unchanged but moved files?
         backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
-        
+
         if source_hash == backup_hash:
             self._logger.debug("source has not changed since last backup")
             return False
