@@ -6,28 +6,6 @@ from AutoBackupAJM.Hasher import _BaseHasher
 
 
 class FileHasher(_BaseHasher):
-
-    def __init__(self, input_path: Union[str, Path], **kwargs):
-        super().__init__(input_path, **kwargs)
-        self._input_path = None
-        self.input_path = input_path
-
-    @property
-    def input_path(self) -> Path:
-        return self._input_path
-
-    @input_path.setter
-    def input_path(self, value: Union[str, Path]):
-        if isinstance(value, str):
-            self._input_path = Path(value)
-        elif isinstance(value, Path):
-            self._input_path = value
-        else:
-            raise TypeError("input_path must be a string or a Path object")
-
-        if not self._input_path.exists():
-            raise FileNotFoundError(f"self.input_path ({self._input_path}) must exist")
-
     def _chunk_file_hash(self, path: Path):
         with open(path, 'rb') as file:
             file_hash = md5()
