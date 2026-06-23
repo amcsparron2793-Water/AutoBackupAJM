@@ -118,12 +118,18 @@ class AutoBackup:
         Property to get the root path for the backup directory. If the directory does not exist,
         it prompts the user to confirm the creation of the directory before returning the path.
         """
-        if self._backup_dir_path_root.is_dir():
-            pass
-        else:
-            if self._make_backup_dir_path_root_question(self._backup_dir_path_root):
-                self._make_backup_dir_path_root(self._backup_dir_path_root)
         return self._backup_dir_path_root
+
+    @backup_dir_path_root.setter
+    def backup_dir_path_root(self, value: Path):
+        if value.is_dir():
+            self._backup_dir_path_root = value
+            return
+
+        if self._make_backup_dir_path_root_question(value):
+            self._make_backup_dir_path_root(value)
+            self._backup_dir_path_root = value
+
 
     @property
     def backup_location(self):

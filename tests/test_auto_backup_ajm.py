@@ -152,7 +152,7 @@ def test_backup_dir_path_root_creation(mock_confirm, source_file, tmp_path):
 
     # Mock confirm to YES
     mock_confirm.return_value.ask.return_value = True
-
+    ab.backup_dir_path_root = new_root.resolve()
     assert ab.backup_dir_path_root == new_root.resolve()
     assert new_root.exists()
 
@@ -169,6 +169,7 @@ def test_backup_dir_path_root_denied(mock_confirm, source_file, tmp_path):
     mock_confirm.return_value.ask.return_value = False
 
     # This should call _make_backup_dir_path_root_question and set backup_disabled to True
+    ab.backup_dir_path_root = new_root.resolve()
     assert ab.backup_dir_path_root == new_root.resolve()
     assert ab.backup_disabled is True
     assert not new_root.exists()
