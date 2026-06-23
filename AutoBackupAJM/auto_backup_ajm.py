@@ -237,6 +237,7 @@ class AutoBackup:
             if (self.due_for_backup and self.source_changed_since_last_backup) or self.force_backup:
                 self._overwrite_protection_check()
                 self.full_backup_path.write_bytes(self.source_path.read_bytes())
+                self._logger.info(f"Backup successful: {self.full_backup_path}")
             else:
                 self._logger.debug("No backup necessary")
         else:
