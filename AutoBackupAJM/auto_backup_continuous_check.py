@@ -7,9 +7,15 @@ from AutoBackupAJM import AutoBackup
 # TODO: use the_sandman for sleeping?
 # TODO: refresh DATE_TODAY every hour for continuous?
 class AutoBackupContinuousCheck(AutoBackup):
-    def continuous_monitor(self):
-        self._logger.info("continuous backup monitor started...")
+    def _log_intro_and_warnings(self):
+        self._logger.info("Continuous Backup Monitor started...")
         self._logger.info("press ctrl+c to exit")
+        self._logger.warning("_overwrite_protection_check() disabled for continuous monitor")
+        self._logger.warning("_make_backup_dir_path_root_question() always returns True for continuous monitor")
+
+    def continuous_monitor(self):
+        self._log_intro_and_warnings()
+
         not_due_notified = False
         while True:
             try:
@@ -39,5 +45,6 @@ class AutoBackupContinuousCheck(AutoBackup):
 
 
 if __name__ == "__main__":
-    ABCC = AutoBackupContinuousCheck('../tox.ini','../test_backups')
+    ABCC = AutoBackupContinuousCheck('../tox.ini',
+                                     '../Misc_Project_Files/test_backups')
     ABCC.continuous_monitor()
