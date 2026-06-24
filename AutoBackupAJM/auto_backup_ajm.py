@@ -43,10 +43,8 @@ class AutoBackup:
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
         self._backup_disabled = None
-        kwargs.setdefault('log_level_to_stream', 'INFO')
 
-        self._logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())#getLogger(self.__class__.__name__))
-        self._check_fallback_logger_config()
+        self._logger = self.setup_logger(**kwargs)
 
         self.backup_disabled = kwargs.get('disable_backup', False)
 
@@ -59,11 +57,18 @@ class AutoBackup:
 
         self.force_backup = kwargs.get('force_backup', False)
 
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
+    def setup_logger(self, **kwargs) -> Logger:
+        # kwargs.setdefault('log_level_to_stream', 'INFO')
+        logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())  # getLogger(self.__class__.__name__))
+        self._check_fallback_logger_config(logger=logger)
+        return logger
+
+    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None, **kwargs):
         default_logger_name = default_logger_name or self.__class__.__name__
-        if self._logger.name == default_logger_name:
+        logger = kwargs.get('logger', getLogger(default_logger_name))
+        if logger.name == default_logger_name:
             basicConfig(level='DEBUG')
-            self._logger.info('using basic config')
+            logger.info('using basic config')
 
     @property
     def backup_disabled(self):
@@ -135,7 +140,6 @@ class AutoBackup:
         if self._make_backup_dir_path_root_question(value):
             self._make_backup_dir_path_root(value)
             self._backup_dir_path_root = value
-
 
     @property
     def backup_location(self):
