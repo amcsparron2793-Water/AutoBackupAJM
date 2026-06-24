@@ -11,9 +11,9 @@ try:
 except ImportError:
     from AutoBackupAJM._version import __version__
 
-from AutoBackupAJM import AutoBackupLogger
+from AutoBackupAJM import SetupLogger
 
-from logging import getLogger, basicConfig, Logger
+
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, Optional
@@ -46,8 +46,7 @@ class AutoBackup:
         self._backup_dir_path_root = None
         kwargs.setdefault('log_level_to_stream', 'INFO')
 
-        self._logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())#getLogger(self.__class__.__name__))
-        self._check_fallback_logger_config()
+        self._logger = SetupLogger.setup_logger(**kwargs)
 
         self.backup_disabled = kwargs.get('disable_backup', False)
 
@@ -61,12 +60,6 @@ class AutoBackup:
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
         self.force_backup = kwargs.get('force_backup', False)
-
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
-        default_logger_name = default_logger_name or self.__class__.__name__
-        if self._logger.name == default_logger_name:
-            basicConfig(level='DEBUG')
-            self._logger.info('using basic config')
 
     @property
     def backup_disabled(self):

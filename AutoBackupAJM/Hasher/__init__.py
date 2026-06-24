@@ -1,6 +1,8 @@
-from logging import getLogger, basicConfig, Logger
+from logging import Logger
 from pathlib import Path
 from typing import Union
+
+from AutoBackupAJM import SetupLogger
 
 
 class _BaseHasher:
@@ -8,7 +10,8 @@ class _BaseHasher:
 
     def __init__(self, input_path, **kwargs):
         self._input_path = None
-        self._logger: Logger = self._setup_logging(**kwargs)  # kwargs.get("logger", getLogger(self.__class__.__name__))
+        # FIXME: PROJECT_ROOT causes issues with log placement for Hasher classes
+        self._logger: Logger = SetupLogger.setup_logger(**kwargs)
         self._logger.info(f"Initializing {self.__class__.__name__}")
 
         self.buffer_size = kwargs.get("buffer_size", self.__class__.DEFAULT_BUFFER_SIZE)
@@ -29,16 +32,6 @@ class _BaseHasher:
 
         if not self._input_path.exists():
             raise FileNotFoundError(f"self.input_path ({self._input_path}) must exist")
-
-    @classmethod
-    def _setup_logging(cls, **kwargs):
-        logger = kwargs.pop("logger", getLogger(cls.__name__))
-        basic_config_level = kwargs.pop("basic_config_level", 'INFO')
-
-        if not logger or not logger.hasHandlers():
-            basicConfig(level=basic_config_level)
-            logger.info(f"Using basic config with level: {basic_config_level}")
-        return logger
 
 
 from AutoBackupAJM.Hasher.factory import HasherFactory
