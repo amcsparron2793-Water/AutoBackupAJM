@@ -63,18 +63,24 @@ class AutoBackup:
 
     def setup_logger(self, **kwargs) -> Logger:
         kwargs.setdefault('log_level_to_stream', 'INFO')
-        logger = kwargs.get('logger', None)
+        logger = kwargs.pop('logger', None)
         if not logger:
             logger = AutoBackupLogger(**kwargs)()
-        self._check_fallback_logger_config(logger=logger)
+        logger = self._check_fallback_logger_config(logger=logger, **kwargs)
         return logger
 
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None, **kwargs):
+    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None, **kwargs) -> Logger:
         default_logger_name = default_logger_name or self.__class__.__name__
-        logger = kwargs.get('logger', getLogger(default_logger_name))
-        if logger.name == default_logger_name:
+        logger = kwargs.get('logger', None)
+        if not logger:
+            logger = getLogger(default_logger_name)
+        if logger.name == default_logger_name or not logger.hasHandlers():
             basicConfig(level='DEBUG')
             logger.info('using basic config')
+        else:
+            logger.info(f"logger: {logger.name} already has handlers, not using basicConfig")
+        logger.info(f"Using logger: {logger.name}")
+        return logger
 
     @property
     def backup_disabled(self):
