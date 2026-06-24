@@ -43,6 +43,7 @@ class AutoBackup:
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
         self._backup_disabled = None
+        self._backup_dir_path_root = None
         kwargs.setdefault('log_level_to_stream', 'INFO')
 
         self._logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())#getLogger(self.__class__.__name__))
@@ -51,7 +52,9 @@ class AutoBackup:
         self.backup_disabled = kwargs.get('disable_backup', False)
 
         self.source_path = Path(source_path).resolve()
-        self.backup_dir_path_root = Path(backup_dir_path_root).resolve()
+
+        # _backup_dir_path_root is set directly so testing patch works
+        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
 
         self.backup_frequency = kwargs.get('backup_frequency', 'daily')
 
@@ -128,14 +131,14 @@ class AutoBackup:
 
     @backup_dir_path_root.setter
     def backup_dir_path_root(self, value: Path):
+        value = Path(value).resolve()
+        self._backup_dir_path_root = value
+
         if value.is_dir():
-            self._backup_dir_path_root = value
             return
 
         if self._make_backup_dir_path_root_question(value):
             self._make_backup_dir_path_root(value)
-            self._backup_dir_path_root = value
-
 
     @property
     def backup_location(self):
