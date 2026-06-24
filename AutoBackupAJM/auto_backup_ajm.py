@@ -4,14 +4,16 @@ auto_backup_ajm.py
 allows automated backup on a chosen schedule
 
 """
-from prompt_toolkit.output.win32 import NoConsoleScreenBufferError
+import sys
 
 try:
     from _version import __version__
 except ImportError:
     from AutoBackupAJM._version import __version__
 
-from logging import getLogger, basicConfig
+from AutoBackupAJM import AutoBackupLogger
+
+from logging import getLogger, basicConfig, Logger
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, Optional
@@ -40,11 +42,12 @@ class AutoBackup:
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
-        self._backup_disabled = kwargs.get('disable_backup', False)
-        self.backup_disabled = self._backup_disabled
+        self._backup_disabled = None
 
-        self._logger = kwargs.get('logger', getLogger(self.__class__.__name__))
+        self._logger = kwargs.get('logger', AutoBackupLogger(log_level_to_stream='INFO')())#getLogger(self.__class__.__name__))
         self._check_fallback_logger_config()
+
+        self.backup_disabled = kwargs.get('disable_backup', False)
 
         self.source_path = Path(source_path).resolve()
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
@@ -93,6 +96,7 @@ class AutoBackup:
     def backup_frequency(self, value: str):
         if value.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
             self._backup_frequency = value.lower()
+            self._logger.info(f"Backup frequency set to {self._backup_frequency}")
         else:
             raise ValueError(f"Invalid backup frequency: {value.lower()}")
 
