@@ -43,14 +43,15 @@ class AutoBackup:
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
         self._backup_disabled = None
+        kwargs.setdefault('log_level_to_stream', 'INFO')
 
-        self._logger = kwargs.get('logger', AutoBackupLogger(log_level_to_stream='INFO')())#getLogger(self.__class__.__name__))
+        self._logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())#getLogger(self.__class__.__name__))
         self._check_fallback_logger_config()
 
         self.backup_disabled = kwargs.get('disable_backup', False)
 
         self.source_path = Path(source_path).resolve()
-        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
+        self.backup_dir_path_root = Path(backup_dir_path_root).resolve()
 
         self.backup_frequency = kwargs.get('backup_frequency', 'daily')
 
@@ -107,6 +108,7 @@ class AutoBackup:
             return True
         else:
             self.backup_disabled = True
+            self._logger.error(f"{backup_dir_path_root} does not exist, and user declined to create it.")
             return False
 
     def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
@@ -289,6 +291,5 @@ class AutoBackup:
 
 if __name__ == "__main__":
     ABDB = AutoBackup(Path('../Misc_Project_Files/test_file.txt'),
-                      Path('../Misc_Project_Files/test_backups'),
-                      backup_frequency='hourly')
+                      Path('../Misc_Project_Files/test_backups'))
     ABDB.backup()
