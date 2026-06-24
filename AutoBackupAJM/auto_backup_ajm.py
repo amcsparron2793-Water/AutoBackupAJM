@@ -58,8 +58,10 @@ class AutoBackup:
         self.force_backup = kwargs.get('force_backup', False)
 
     def setup_logger(self, **kwargs) -> Logger:
-        # kwargs.setdefault('log_level_to_stream', 'INFO')
-        logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())  # getLogger(self.__class__.__name__))
+        kwargs.setdefault('log_level_to_stream', 'INFO')
+        logger = kwargs.get('logger', None)
+        if not logger:
+            logger = AutoBackupLogger(**kwargs)()
         self._check_fallback_logger_config(logger=logger)
         return logger
 
