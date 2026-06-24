@@ -47,6 +47,7 @@ class AutoBackup:
 
         self._logger = kwargs.get('logger', AutoBackupLogger(**kwargs)())#getLogger(self.__class__.__name__))
         self._check_fallback_logger_config()
+        sys.excepthook = self.log_uncaught_exception
 
         self.backup_disabled = kwargs.get('disable_backup', False)
 
@@ -58,6 +59,16 @@ class AutoBackup:
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
         self.force_backup = kwargs.get('force_backup', False)
+
+    def log_uncaught_exception(self, exc_type, exc_value, exc_traceback):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_traceback)
+            return
+
+        self._logger.critical(
+            "Uncaught exception",
+            exc_info=(exc_type, exc_value, exc_traceback),
+        )
 
     def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None):
         default_logger_name = default_logger_name or self.__class__.__name__
