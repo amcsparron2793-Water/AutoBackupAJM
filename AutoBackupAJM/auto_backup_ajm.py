@@ -39,6 +39,7 @@ class AutoBackup:
     """
     DATE_TODAY: datetime = datetime.today()
     VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
+    DEFAULT_BACKUP_FREQUENCY = 'daily'
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
@@ -48,18 +49,19 @@ class AutoBackup:
 
         self._logger = SetupLogger.setup_logger(**kwargs)
 
-        self.backup_disabled = kwargs.get('disable_backup', False)
-
         self.source_path = Path(source_path).resolve()
 
-        # _backup_dir_path_root is set directly so testing patch works
-        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
-
-        self.backup_frequency = kwargs.get('backup_frequency', 'daily')
+        self.set_initial_properties_values(backup_dir_path_root, **kwargs)
 
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
         self.force_backup = kwargs.get('force_backup', False)
+
+    def set_initial_properties_values(self, backup_dir_path_root, **kwargs):
+        self.backup_disabled = kwargs.get('disable_backup', False)
+        # _backup_dir_path_root is set directly so testing patch works
+        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
+        self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
 
     @property
     def backup_disabled(self):
