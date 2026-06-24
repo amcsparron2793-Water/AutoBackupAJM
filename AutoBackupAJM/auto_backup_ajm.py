@@ -11,9 +11,9 @@ try:
 except ImportError:
     from AutoBackupAJM._version import __version__
 
-from AutoBackupAJM import AutoBackupLogger
+from AutoBackupAJM import SetupLogger
 
-from logging import getLogger, basicConfig, Logger
+
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, Optional
@@ -46,7 +46,7 @@ class AutoBackup:
         self._backup_dir_path_root = None
         kwargs.setdefault('log_level_to_stream', 'INFO')
 
-        self._logger = self.setup_logger(**kwargs)
+        self._logger = SetupLogger.setup_logger(**kwargs)
 
         self.backup_disabled = kwargs.get('disable_backup', False)
 
@@ -60,27 +60,6 @@ class AutoBackup:
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
         self.force_backup = kwargs.get('force_backup', False)
-
-    def setup_logger(self, **kwargs) -> Logger:
-        kwargs.setdefault('log_level_to_stream', 'INFO')
-        logger = kwargs.pop('logger', None)
-        if not logger:
-            logger = AutoBackupLogger(**kwargs)()
-        logger = self._check_fallback_logger_config(logger=logger, **kwargs)
-        return logger
-
-    def _check_fallback_logger_config(self, default_logger_name: Optional[str] = None, **kwargs) -> Logger:
-        default_logger_name = default_logger_name or self.__class__.__name__
-        logger = kwargs.get('logger', None)
-        if not logger:
-            logger = getLogger(default_logger_name)
-        if logger.name == default_logger_name or not logger.hasHandlers():
-            basicConfig(level='DEBUG')
-            logger.info('using basic config')
-        else:
-            logger.info(f"logger: {logger.name} already has handlers, not using basicConfig")
-        logger.info(f"Using logger: {logger.name}")
-        return logger
 
     @property
     def backup_disabled(self):

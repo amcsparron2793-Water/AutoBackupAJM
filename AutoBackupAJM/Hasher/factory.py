@@ -2,6 +2,7 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Union, Optional
 
+from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher import _BaseHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
@@ -59,7 +60,7 @@ class HasherFactory(_BaseFactoryHasher):
 
     def __new__(cls, *args, **kwargs):
         input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
-        kwargs["logger"] = cls._setup_logging(**kwargs)
+        kwargs["logger"] = SetupLogger.setup_logger(**kwargs)
         return cls.validate_and_process_input_path(input_path, **kwargs)
 
 
