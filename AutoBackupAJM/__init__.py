@@ -1,5 +1,19 @@
 from pathlib import Path
-PROJECT_ROOT = Path(__file__).parent.parent
+from typing import Optional
+
+
+def find_project_root(start: Optional[Path] = None, **kwargs) -> Path:
+    start: Path = start or Path(__file__).resolve()
+    marker_file = kwargs.get("marker_file", "setup.py")
+
+    for path in [start, *start.parents]:
+        if (path / marker_file).exists():
+            return path
+
+    raise FileNotFoundError(f"Could not find project root containing {marker_file}")
+
+
+PROJECT_ROOT = find_project_root()
 
 
 from AutoBackupAJM.auto_backup_logger import AutoBackupLogger, SetupLogger

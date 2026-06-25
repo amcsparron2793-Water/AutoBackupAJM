@@ -1,15 +1,13 @@
 from logging import Logger, getLogger, basicConfig
-from pathlib import Path
 from typing import Optional
 
 from EasyLoggerAJM import EasyLogger
-
-PROJECT_ROOT = Path(__file__).parent.parent
+from AutoBackupAJM import PROJECT_ROOT
 
 
 class AutoBackupLogger(EasyLogger):
     _PROJECT_ROOT = PROJECT_ROOT
-    # ROOT_LOG_LOCATION_DEFAULT = PROJECT_ROOT / 'logs'
+    ROOT_LOG_LOCATION_DEFAULT = _PROJECT_ROOT / 'logs'
     PROJECT_NAME = 'AutoBackupAJM'
 
     def __init__(self, **kwargs):
