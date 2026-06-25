@@ -26,7 +26,10 @@ class ArchiveExtractor:
             self._extract_dir = Path(self.archive_path.parent / self.archive_path.stem).resolve()
             self.logger.info(f"extract_dir not specified, defaulting to {self._extract_dir}")
         else:
-            self._extract_dir = Path(value).resolve()
+            resolved_path = Path(value).resolve()
+            if resolved_path.suffix:
+                raise ValueError(f"extract_dir must be a directory, not a file: {resolved_path}")
+            self._extract_dir = resolved_path
 
     @property
     def archive_contents(self):
@@ -55,6 +58,7 @@ class ArchiveFileHasher(LargeFileHasher):
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         super().__init__(input_path, **kwargs)
+        kwargs.setdefault('logger', self._logger)
         self.unzip_and_hash_contents = kwargs.get("unzip_and_hash_contents", False)
 
     @LargeFileHasher.input_path.setter
@@ -63,6 +67,7 @@ class ArchiveFileHasher(LargeFileHasher):
 
         if self._input_path.suffix not in self.__class__.ARCHIVE_FILE_TYPES:
             raise ValueError(f"input_path must be an archive file, not {self._input_path.suffix}")
+            raise ValueError(f"input_path must be an archive file, not {self._input_path.suffix or 'a directory'}")
 
     def hash_archive(self, **kwargs):
         unzip_and_hash = kwargs.get("unzip_and_hash_contents", self.unzip_and_hash_contents)
