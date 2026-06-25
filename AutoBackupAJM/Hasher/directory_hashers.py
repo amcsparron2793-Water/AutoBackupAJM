@@ -14,7 +14,7 @@ class DirectoryHasher(FileHasher):
 
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
-        print(f"Hashing directory {dir_path.resolve()}.")
+        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
 
         # TODO: walk needs to be relative to the root dir
         #  since the root dir is always going to be
@@ -27,13 +27,6 @@ class DirectoryHasher(FileHasher):
             for file in files:
                 full_path = current_dir / file
                 yield self.hash_file(full_path, **kwargs)
-
-            # OLD: this does work
-            # if file.is_file():
-            #     yield self.hash_file(file, **kwargs)
-            # else:
-            #     # See rework above: add handling for subdirectories
-            #     print(f"Skipping subdir \'{file.resolve()}\'")
 
 
 class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):

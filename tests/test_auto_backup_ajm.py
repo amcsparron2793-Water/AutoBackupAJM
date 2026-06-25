@@ -66,7 +66,7 @@ def test_due_for_backup_daily(mock_datetime, source_file, temp_dir):
     with patch.object(AutoBackup, 'DATE_TODAY', fixed_today.date()):
         ab = AutoBackup(source_file, temp_dir, backup_frequency='daily')
         # Ensure the instance also has the correct DATE_TODAY
-        ab.DATE_TODAY = fixed_today.date()
+        ab.DATE_TODAY = fixed_today
 
         assert ab.due_for_backup is True  # No backup yet
 
@@ -86,8 +86,8 @@ def test_due_for_backup_daily(mock_datetime, source_file, temp_dir):
 
         # Tomorrow
         tomorrow = fixed_today + timedelta(days=1)
-        with patch.object(AutoBackup, 'DATE_TODAY', tomorrow.date()):
-            ab.DATE_TODAY = tomorrow.date()
+        with patch.object(AutoBackup, 'DATE_TODAY', tomorrow):
+            ab.DATE_TODAY = tomorrow
             with patch.object(AutoBackup, 'most_recent_backup_file', (recent[0], fixed_today.timestamp())):
                 assert ab.due_for_backup is True
 
@@ -152,7 +152,7 @@ def test_backup_dir_path_root_creation(mock_confirm, source_file, tmp_path):
 
     # Mock confirm to YES
     mock_confirm.return_value.ask.return_value = True
-
+    ab.backup_dir_path_root = new_root.resolve()
     assert ab.backup_dir_path_root == new_root.resolve()
     assert new_root.exists()
 
@@ -169,6 +169,7 @@ def test_backup_dir_path_root_denied(mock_confirm, source_file, tmp_path):
     mock_confirm.return_value.ask.return_value = False
 
     # This should call _make_backup_dir_path_root_question and set backup_disabled to True
+    ab.backup_dir_path_root = new_root.resolve()
     assert ab.backup_dir_path_root == new_root.resolve()
     assert ab.backup_disabled is True
     assert not new_root.exists()
@@ -180,9 +181,9 @@ def test_due_for_backup_weekly(mock_datetime, source_file, temp_dir):
     mock_datetime.today.return_value = fixed_today
     mock_datetime.fromtimestamp.side_effect = lambda ts: datetime.fromtimestamp(ts)
 
-    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today.date()):
+    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today):
         ab = AutoBackup(source_file, temp_dir, backup_frequency='weekly')
-        ab.DATE_TODAY = fixed_today.date()
+        ab.DATE_TODAY = fixed_today
 
         # Mock recent backup from Week 1 (2023-01-03)
         week1_date = datetime(2023, 1, 3)
@@ -201,9 +202,9 @@ def test_due_for_backup_monthly(mock_datetime, source_file, temp_dir):
     mock_datetime.today.return_value = fixed_today
     mock_datetime.fromtimestamp.side_effect = lambda ts: datetime.fromtimestamp(ts)
 
-    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today.date()):
+    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today):
         ab = AutoBackup(source_file, temp_dir, backup_frequency='monthly')
-        ab.DATE_TODAY = fixed_today.date()
+        ab.DATE_TODAY = fixed_today
 
         # Mock recent backup from January
         jan_date = datetime(2023, 1, 15)

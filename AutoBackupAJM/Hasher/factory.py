@@ -2,12 +2,13 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Union, Optional
 
+from AutoBackupAJM import SetupLogger
+from AutoBackupAJM.Hasher import _BaseHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 
 
-# TODO: rename to InputPathProcessor?
-class _BaseFactoryHasher(metaclass=ABCMeta):
+class _BaseFactoryHasher(_BaseHasher, metaclass=ABCMeta):
     @classmethod
     @abstractmethod
     def _process_input_path(cls, input_path: Union[str, Path], **kwargs):
@@ -59,4 +60,9 @@ class HasherFactory(_BaseFactoryHasher):
 
     def __new__(cls, *args, **kwargs):
         input_path: Optional[Union[str, Path]] = kwargs.pop("input_path", None)
+        kwargs["logger"] = SetupLogger.setup_logger(**kwargs)
         return cls.validate_and_process_input_path(input_path, **kwargs)
+
+
+if __name__ == "__main__":
+    print(HasherFactory(input_path="../"))
