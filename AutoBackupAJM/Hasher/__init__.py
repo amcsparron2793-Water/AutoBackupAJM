@@ -10,7 +10,6 @@ class _BaseHasher:
 
     def __init__(self, input_path, **kwargs):
         self._input_path = None
-        # FIXME: PROJECT_ROOT causes issues with log placement for Hasher classes
         self._logger: Logger = SetupLogger.setup_logger(**kwargs)
         self._logger.info(f"Initializing {self.__class__.__name__}")
 
