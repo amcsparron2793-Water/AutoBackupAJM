@@ -1,4 +1,5 @@
 import shutil
+from logging import getLogger
 from pathlib import Path
 from typing import Union
 
@@ -9,19 +10,29 @@ from AutoBackupAJM.Hasher.file_hashers import LargeFileHasher
 class ArchiveExtractor:
     def __init__(self, archive_path: Path, **kwargs):
         self._extract_dir = None
-        self.archive_contents = None
+        self._archive_contents = None
+        self.logger = kwargs.get("logger", getLogger(__name__))
+
         self.archive_path = archive_path
         self.extract_dir = kwargs.get("extract_dir", None)
 
     @property
     def extract_dir(self):
-        if self._extract_dir is None:
-            self._extract_dir = Path(self.archive_path.parent / self.archive_path.stem)
         return self._extract_dir
 
     @extract_dir.setter
     def extract_dir(self, value: Union[str, Path]):
-        self._extract_dir = Path(value)
+        if value is None:
+            self._extract_dir = Path(self.archive_path.parent / self.archive_path.stem).resolve()
+            self.logger.info(f"extract_dir not specified, defaulting to {self._extract_dir}")
+        else:
+            self._extract_dir = Path(value).resolve()
+
+    @property
+    def archive_contents(self):
+        if self.extract_dir is not None and self.extract_dir.is_dir():
+            self._archive_contents = [f for f in self.extract_dir.iterdir()]
+        return self._archive_contents
 
     def _validate_archive_extraction(self, **kwargs):
         if self.extract_dir.is_dir():
@@ -36,11 +47,6 @@ class ArchiveExtractor:
             raise ValueError(f"archive_path {self.archive_path} is not a valid archive file")
 
         return self._validate_archive_extraction(**kwargs)
-
-    def get_archive_contents(self, **kwargs):
-        if self.archive_contents is None:
-            self.archive_contents = [f for f in self.extract_dir.iterdir()]
-        return self.archive_contents
 
 
 # TODO: if file is archive, option to unzip and hash contents
