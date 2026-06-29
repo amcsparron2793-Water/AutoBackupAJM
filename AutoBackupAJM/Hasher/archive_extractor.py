@@ -2,9 +2,14 @@ import shutil
 from logging import getLogger
 from pathlib import Path
 from typing import Union
+from itertools import chain
 
 
 class ArchiveExtractor:
+    SUPPORTED_ARCHIVE_TYPES = list(chain.from_iterable(
+        [x for x in [x[1] for x in shutil.get_unpack_formats()]]
+    ))
+
     def __init__(self, archive_path: Path, **kwargs):
         self._extract_dir = None
         self._archive_contents = None

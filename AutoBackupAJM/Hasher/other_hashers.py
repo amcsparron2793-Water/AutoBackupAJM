@@ -8,7 +8,7 @@ from AutoBackupAJM.Hasher.file_hashers import LargeFileHasher
 
 # TODO: if file is archive, option to unzip and hash contents
 class ArchiveFileHasher(LargeFileHasher):
-    ARCHIVE_FILE_TYPES = ['.zip', '.tar', '.tar.gz', '.tar.bz2', '.7z', '.rar']
+    ARCHIVE_FILE_TYPES = ArchiveExtractor.SUPPORTED_ARCHIVE_TYPES  # ['.zip', '.tar', '.tar.gz', '.tar.bz2', '.7z', '.rar']
 
     def __init__(self, input_path: Union[str, Path], **kwargs):
         self._is_initial_file_check = True
