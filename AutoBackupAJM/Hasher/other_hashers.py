@@ -44,6 +44,8 @@ class ArchiveFileHasher(LargeFileHasher):
             raise AttributeError("use ArchiveDirectoryHasher to hash the contents of this directory")
 
     def _handle_path(self, archive_contents: Path, **kwargs):
+        if archive_contents.is_dir():
+            raise AttributeError("use ArchiveDirectoryHasher to hash the contents of this directory")
         return self.hash_file(archive_contents, **kwargs)
 
     def _hash_contents(self, archive_contents, **kwargs):

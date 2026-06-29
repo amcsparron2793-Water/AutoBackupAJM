@@ -27,7 +27,7 @@ setup(
     url='https://github.com/amcsparron2793-Water/AutoBackupAJM',
     download_url=f'https://github.com/amcsparron2793-Water/AutoBackupAJM/archive/refs/tags/{get_property("__version__", project_name)}.tar.gz',
     keywords=[],
-    install_requires=["questionary"],
+    install_requires=["questionary", 'EasyLoggerAJM'],
     license='MIT License',
     author='Amcsparron',
     author_email='amcsparron@albanyny.gov',
