@@ -46,28 +46,6 @@ class DirectoryHasher(FileHasher):
         for fp in self._walk_directory(dir_path, **kwargs):
             yield self.hash_file(fp, **kwargs)
 
-    def hash_and_record_directory(self, **kwargs):
-        directory_records = {}
-        for f_path, f_hash in self.hash_directory():
-            # FIXME: is this the right relative path?
-            #  should it be PROJECT_ROOT or dir_path (would need to be passed in)
-            #  regardless, file CONTENT will hash the same
-            #  - need to figure out how to match paths if a file is moved also
-            directory_records[f_hash] = f_path.relative_to(PROJECT_ROOT).as_posix()
-        self._record_directory(directory_records, **kwargs)
-
-    def _record_directory(self, directory_records: dict, **kwargs):
-        # TODO: file name should default to the name of the root directory
-        default_file_name = "directory_hashes.json"
-        default_record_save_dir = Path(PROJECT_ROOT / "Misc_Project_Files")
-        default_record_path = default_record_save_dir / default_file_name
-
-        record_path = kwargs.get("record_path", default_record_path)
-
-        with open(record_path, "w") as f:
-            dump(directory_records, fp=f,  indent=4)
-            self._logger.info(f"Directory hashes recorded to {record_path}")
-
 
 class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
     ...
