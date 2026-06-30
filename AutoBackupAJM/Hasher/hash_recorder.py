@@ -1,3 +1,4 @@
+from abc import abstractmethod, ABCMeta
 from json import dump
 from logging import getLogger
 from pathlib import Path
@@ -6,18 +7,7 @@ from typing import Union
 from AutoBackupAJM import PROJECT_ROOT
 
 
-class HashRecorder:
-    DEFAULT_FILE_NAME = "directory_hashes.json"
-    DEFAULT_RECORD_SAVE_DIR = Path(PROJECT_ROOT / "Misc_Project_Files")
-    DEFAULT_RECORD_PATH = DEFAULT_RECORD_SAVE_DIR / DEFAULT_FILE_NAME
-
-    def __init__(self, **kwargs):
-        self._file_name = None
-        self._record_save_dir = None
-        self._logger = kwargs.get("logger", getLogger(__name__))
-
-        self.record_path = kwargs.get("record_path", self.__class__.DEFAULT_RECORD_PATH)
-
+class _Validators:
     @staticmethod
     def _str_to_path(value: Union[str, Path]) -> Path:
         if isinstance(value, str):
@@ -25,6 +15,41 @@ class HashRecorder:
         elif not isinstance(value, Path):
             raise TypeError("value must be a string or Path object.")
         return value
+
+    def _validate_file_name(self, file_name: Union[str, Path]) -> Path:
+        file_name: Path = self._str_to_path(file_name)
+
+        if not file_name.suffix == ".json":
+            raise TypeError("recorder file must be a .json file.")
+
+        return file_name
+
+    def _validate_record_save_dir(self, dir_path: Union[str, Path]) -> Path:
+        dir_path: Path = self._str_to_path(dir_path)
+        if not dir_path.suffix:
+            if not dir_path.is_dir():
+                dir_path.mkdir(parents=True, exist_ok=True)
+                self._logger.info(f"Created directory {dir_path} for recorder files.")
+            return dir_path
+        else:
+            raise TypeError("record_save_dir must be a directory, not a file.")
+
+
+class HashRecorder(_Validators, metaclass=ABCMeta):
+    DEFAULT_FILE_NAME = "directory_hashes.json"
+    DEFAULT_RECORD_SAVE_DIR = Path(PROJECT_ROOT / "Misc_Project_Files")
+
+    def __init__(self, **kwargs):
+        self._file_name = None
+        self._record_save_dir = None
+        self._logger = kwargs.get("logger", getLogger(__name__))
+
+        self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
+        self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
+
+    @abstractmethod
+    def hash_directory(self):
+        ...
 
     @property
     def record_save_dir(self):
@@ -44,23 +69,9 @@ class HashRecorder:
         value = self._validate_file_name(value)
         self._file_name = value
 
-    def _validate_file_name(self, file_name: Union[str, Path]) -> Path:
-        file_name: Path = self._str_to_path(file_name)
-
-        if not file_name.suffix == ".json":
-            raise TypeError("recorder file must be a .json file.")
-
-        return file_name
-
-    def _validate_record_save_dir(self, dir_path: Union[str, Path]) -> Path:
-        dir_path: Path = self._str_to_path(dir_path)
-        if not dir_path.suffix:
-            if not dir_path.is_dir():
-                dir_path.mkdir(parents=True, exist_ok=True)
-                self._logger.info(f"Created directory {dir_path} for recorder files.")
-            return dir_path
-        else:
-            raise TypeError("record_save_dir must be a directory, not a file.")
+    @property
+    def record_path(self):
+        return self.record_save_dir / self.file_name
 
     def hash_and_record_directory(self, **kwargs):
         directory_records = {}

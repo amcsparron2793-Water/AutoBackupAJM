@@ -1,15 +1,15 @@
-from json import dumps, dump
 from pathlib import Path
 from typing import Generator, Tuple, Union
-from AutoBackupAJM import PROJECT_ROOT
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
+from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
 
 
-class DirectoryHasher(FileHasher):
+class DirectoryHasher(FileHasher, HashRecorder):
     SYSTEM_DIR_PREFIXES = ['.', '__']
 
     def __init__(self, input_path: Path, ignore_system_dirs: bool = True, **kwargs):
         self.ignore_system_dirs = ignore_system_dirs
+        HashRecorder.__init__(self, **kwargs)
         super().__init__(input_path, **kwargs)
 
     @classmethod
