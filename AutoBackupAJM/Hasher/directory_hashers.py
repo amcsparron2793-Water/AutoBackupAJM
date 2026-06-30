@@ -58,10 +58,12 @@ class DirectoryHasher(FileHasher):
 
     def _record_directory(self, directory_records: dict, **kwargs):
         # TODO: file name should default to the name of the root directory
-        # TODO: default dir should be separate from filename
         default_file_name = "directory_hashes.json"
-        default_record_path = Path(PROJECT_ROOT / "Misc_Project_Files"/ default_file_name)
+        default_record_save_dir = Path(PROJECT_ROOT / "Misc_Project_Files")
+        default_record_path = default_record_save_dir / default_file_name
+
         record_path = kwargs.get("record_path", default_record_path)
+
         with open(record_path, "w") as f:
             dump(directory_records, fp=f,  indent=4)
             self._logger.info(f"Directory hashes recorded to {record_path}")
