@@ -75,6 +75,7 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
         if is_single_file:
             raise AttributeError("use ArchiveFileHasher to hash the contents of this file")
         else:
+            # FIXME: what was this for?
             print([x.parent for x in archive_contents])
             exit(-1)
 
@@ -84,8 +85,7 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
 
 
 if __name__ == "__main__":
-    # TODO: functional, but needs a way to record and compare hashes -
+    # TODO: functional, but needs a way to compare hashes -
     #  also needs to be integrated with factory and tests
     AH = ArchiveDirectoryHasher('../../Misc_Project_Files/HostedFeatureStorage.zip')
     archive_hash = AH.hash_archive(unzip_and_hash_contents=True)
-    print("DONE")

@@ -37,6 +37,44 @@ class _Validators:
         else:
             raise TypeError("record_save_dir must be a directory, not a file.")
 
+    def _flatten_common_dir_filename(self, filename: Union[str, Path]) -> Path:
+        filename: Path = self._str_to_path(filename)
+        if len(filename.parts) > 1:
+            filename = Path(filename.name)
+        return filename
+
+    def _get_common_dir_path(self, directory_records: dict) -> Optional[Path]:
+        paths = [str(p) for p in directory_records.values()]
+        try:
+            common = commonpath(paths)
+            self._logger.debug(f"Common directory path: {common}")
+            return Path(common)
+        except ValueError:
+            return None
+
+    def _get_flattened_common_dir_filename(self, dir_records: dict,
+                                           filename: Optional[Union[str, Path]] = None) -> Optional[Path]:
+        if not filename:
+            filename = self._get_common_dir_path(dir_records)
+            if filename:
+                filename: Path = self._flatten_common_dir_filename(filename)
+                return filename
+        return None
+
+    def _validate_common_dir_filename(self, dir_records: dict, **kwargs):
+        filename = kwargs.get('filename', None)
+        filename = self._get_flattened_common_dir_filename(dir_records, filename)
+
+        if filename:
+            if not filename.suffix:
+                self._logger.warning(f"Filename {filename} does not have a suffix, "
+                                     f"adding {self.__class__.VALID_FILE_TYPES[0]}")
+                filename = filename.with_suffix(self.__class__.VALID_FILE_TYPES[0])
+            return filename
+        else:
+            self._logger.warning("No common directory found, using default file name.")
+            return None
+
 
 class HashRecorder(_Validators, metaclass=ABCMeta):
     DEFAULT_FILE_NAME = "directory_hashes.json"
@@ -87,38 +125,6 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
         self._record_directory(directory_records, **kwargs)
         return directory_records
 
-    def _get_common_dir_path(self, directory_records: dict) -> Optional[Path]:
-        paths = [str(p) for p in directory_records.values()]
-        try:
-            common = commonpath(paths)
-            self._logger.debug(f"Common directory path: {common}")
-            return Path(common)
-        except ValueError:
-            return None
-
-    def _flatten_common_dir_filename(self, filename: Union[str, Path]):
-        filename: Path = self._str_to_path(filename)
-        if len(filename.parts) > 1:
-            filename = Path(filename.name)
-        return filename
-
-    def _validate_common_dir_filename(self, dir_records: dict, **kwargs):
-        filename = kwargs.get('filename', None)
-        if not filename:
-            filename = self._get_common_dir_path(dir_records)
-            if filename:
-                filename = self._flatten_common_dir_filename(filename)
-
-        if filename:
-            if not filename.suffix:
-                self._logger.warning(f"Filename {filename} does not have a suffix, "
-                                     f"adding {self.__class__.VALID_FILE_TYPES[0]}")
-                filename = filename.with_suffix(self.__class__.VALID_FILE_TYPES[0])
-            return filename
-        else:
-            self._logger.warning("No common directory found, using default file name.")
-            return None
-
     def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
             if self.file_name.suffix == '.json':
@@ -129,9 +135,9 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
             self._logger.info(f"Directory hashes recorded to {self.record_path}")
 
     def _record_directory(self, directory_records: dict, **kwargs):
-        # TODO: file name should default to the name of the common directory
         cdf = self._validate_common_dir_filename(directory_records, **kwargs)
         if cdf:
             self.file_name = cdf
+            self._logger.info(f"Using common dir filename {self.file_name} for directory hashes file.")
 
         self._write_directory_record_file(directory_records, **kwargs)
