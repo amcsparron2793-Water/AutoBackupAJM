@@ -38,10 +38,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
 
-        # TODO: walk needs to be relative to the root dir
-        #  since the root dir is always going to be
-        #  different since the source is from a backup.
-
         # TODO: multithreading?
         for fp in self._walk_directory(dir_path, **kwargs):
             yield self.hash_file(fp, **kwargs)

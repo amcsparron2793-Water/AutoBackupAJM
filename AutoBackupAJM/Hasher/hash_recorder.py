@@ -21,7 +21,6 @@ class _Validators:
 
     def _validate_file_name(self, file_name: Union[str, Path]) -> Path:
         file_name: Path = self._str_to_path(file_name)
-
         if file_name.suffix not in self.__class__.VALID_FILE_TYPES:
             raise TypeError(f"recorder file must be one of the following types: "
                             f"{', '.join(self.__class__.VALID_FILE_TYPES)}")
@@ -86,6 +85,7 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
             #  - need to figure out how to match paths if a file is moved also
             directory_records[f_hash] = f_path.relative_to(PROJECT_ROOT).as_posix()
         self._record_directory(directory_records, **kwargs)
+        return directory_records
 
     def _get_common_dir_path(self, directory_records: dict) -> Optional[Path]:
         paths = [str(p) for p in directory_records.values()]
@@ -96,24 +96,30 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
         except ValueError:
             return None
 
-    def _set_common_dir_filename(self, dir_records: dict, **kwargs):
+    def _flatten_common_dir_filename(self, filename: Union[str, Path]):
+        filename: Path = self._str_to_path(filename)
+        if len(filename.parts) > 1:
+            filename = Path(filename.name)
+        return filename
+
+    def _validate_common_dir_filename(self, dir_records: dict, **kwargs):
         filename = kwargs.get('filename', None)
         if not filename:
             filename = self._get_common_dir_path(dir_records)
+            if filename:
+                filename = self._flatten_common_dir_filename(filename)
 
         if filename:
             if not filename.suffix:
                 self._logger.warning(f"Filename {filename} does not have a suffix, "
                                      f"adding {self.__class__.VALID_FILE_TYPES[0]}")
                 filename = filename.with_suffix(self.__class__.VALID_FILE_TYPES[0])
-            self.file_name = filename
+            return filename
         else:
             self._logger.warning("No common directory found, using default file name.")
+            return None
 
-    def _record_directory(self, directory_records: dict, **kwargs):
-        # TODO: file name should default to the name of the common directory
-        self._set_common_dir_filename(directory_records, **kwargs)
-
+    def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
             if self.file_name.suffix == '.json':
                 dump(directory_records, fp=f,  indent=4)
@@ -121,3 +127,11 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
                 raise TypeError(f"file_name must be one of the following types: "
                                 f"{', '.join(self.__class__.VALID_FILE_TYPES)}")
             self._logger.info(f"Directory hashes recorded to {self.record_path}")
+
+    def _record_directory(self, directory_records: dict, **kwargs):
+        # TODO: file name should default to the name of the common directory
+        cdf = self._validate_common_dir_filename(directory_records, **kwargs)
+        if cdf:
+            self.file_name = cdf
+
+        self._write_directory_record_file(directory_records, **kwargs)

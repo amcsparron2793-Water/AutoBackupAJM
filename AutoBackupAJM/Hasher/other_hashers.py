@@ -80,12 +80,12 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
 
     def _handle_path(self, archive_contents: Path, **kwargs):
         self.input_path = archive_contents
-        return self.hash_directory(**kwargs)
+        return self.hash_and_record_directory(**kwargs)
 
 
 if __name__ == "__main__":
     # TODO: functional, but needs a way to record and compare hashes -
     #  also needs to be integrated with factory and tests
     AH = ArchiveDirectoryHasher('../../Misc_Project_Files/HostedFeatureStorage.zip')
-    archive_hash = AH.hash_archive(unzip_and_hash_contents=False)
-    print([x for x in archive_hash])
+    archive_hash = AH.hash_archive(unzip_and_hash_contents=True)
+    print("DONE")
