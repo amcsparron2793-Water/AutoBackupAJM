@@ -11,7 +11,7 @@ class FileHasher(_BaseHasher):
             file_hash = md5()
             while chunk := file.read(self.buffer_size):
                 file_hash.update(chunk)
-            self._logger.info(f"Hashing {path} complete...")
+            self._logger.debug(f"Hashing {path} complete...")
             return file_hash.hexdigest()
 
     @staticmethod

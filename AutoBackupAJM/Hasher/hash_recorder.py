@@ -1,13 +1,16 @@
 from abc import abstractmethod, ABCMeta
 from json import dump
 from logging import getLogger
+from os.path import commonpath
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
 from AutoBackupAJM import PROJECT_ROOT
 
 
 class _Validators:
+    VALID_FILE_TYPES = ['.json']
+
     @staticmethod
     def _str_to_path(value: Union[str, Path]) -> Path:
         if isinstance(value, str):
@@ -19,9 +22,10 @@ class _Validators:
     def _validate_file_name(self, file_name: Union[str, Path]) -> Path:
         file_name: Path = self._str_to_path(file_name)
 
-        if not file_name.suffix == ".json":
-            raise TypeError("recorder file must be a .json file.")
-
+        if file_name.suffix not in self.__class__.VALID_FILE_TYPES:
+            raise TypeError(f"recorder file must be one of the following types: "
+                            f"{', '.join(self.__class__.VALID_FILE_TYPES)}")
+        self._logger.debug(f"Validated file name: {file_name}")
         return file_name
 
     def _validate_record_save_dir(self, dir_path: Union[str, Path]) -> Path:
@@ -83,9 +87,37 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
             directory_records[f_hash] = f_path.relative_to(PROJECT_ROOT).as_posix()
         self._record_directory(directory_records, **kwargs)
 
+    def _get_common_dir_path(self, directory_records: dict) -> Optional[Path]:
+        paths = [str(p) for p in directory_records.values()]
+        try:
+            common = commonpath(paths)
+            self._logger.debug(f"Common directory path: {common}")
+            return Path(common)
+        except ValueError:
+            return None
+
+    def _set_common_dir_filename(self, dir_records: dict, **kwargs):
+        filename = kwargs.get('filename', None)
+        if not filename:
+            filename = self._get_common_dir_path(dir_records)
+
+        if filename:
+            if not filename.suffix:
+                self._logger.warning(f"Filename {filename} does not have a suffix, "
+                                     f"adding {self.__class__.VALID_FILE_TYPES[0]}")
+                filename = filename.with_suffix(self.__class__.VALID_FILE_TYPES[0])
+            self.file_name = filename
+        else:
+            self._logger.warning("No common directory found, using default file name.")
+
     def _record_directory(self, directory_records: dict, **kwargs):
-        # TODO: file name should default to the name of the root directory
+        # TODO: file name should default to the name of the common directory
+        self._set_common_dir_filename(directory_records, **kwargs)
 
         with open(self.record_path, "w") as f:
-            dump(directory_records, fp=f,  indent=4)
+            if self.file_name.suffix == '.json':
+                dump(directory_records, fp=f,  indent=4)
+            else:
+                raise TypeError(f"file_name must be one of the following types: "
+                                f"{', '.join(self.__class__.VALID_FILE_TYPES)}")
             self._logger.info(f"Directory hashes recorded to {self.record_path}")
