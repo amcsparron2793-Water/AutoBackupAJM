@@ -83,7 +83,9 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
     def __init__(self, **kwargs):
         self._file_name = None
         self._record_save_dir = None
-        self._logger = kwargs.get("logger", getLogger(__name__))
+        self._logger = kwargs.get("logger", None)
+        if not self._logger:
+            self._logger = getLogger(self.__class__.__name__)
 
         self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
         self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
