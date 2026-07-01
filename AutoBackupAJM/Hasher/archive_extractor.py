@@ -13,7 +13,9 @@ class ArchiveExtractor:
     def __init__(self, archive_path: Path, **kwargs):
         self._extract_dir = None
         self._archive_contents = None
-        self.logger = kwargs.get("logger", getLogger(__name__))
+        self.logger = kwargs.get("logger", None)
+        if not self.logger:
+            self.logger = getLogger(self.__class__.__name__)
 
         self.archive_path = archive_path
         self.extract_dir = kwargs.get("extract_dir", None)

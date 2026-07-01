@@ -11,6 +11,8 @@ class DirectoryHasher(FileHasher):
     def __init__(self, input_path: Path, ignore_system_dirs: bool = True, **kwargs):
         self.ignore_system_dirs = ignore_system_dirs
         super().__init__(input_path, **kwargs)
+        kwargs.setdefault("logger", self._logger)
+        HashRecorder.__init__(self, **kwargs)
 
     @classmethod
     def _is_system_dir(cls, dir_path: Path) -> bool:

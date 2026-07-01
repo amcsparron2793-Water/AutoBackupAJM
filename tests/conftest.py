@@ -1,7 +1,22 @@
 # noinspection PyPackageRequirements
 import pytest
-from pathlib import Path
-import shutil
+
+from AutoBackupAJM import SetupLogger
+
+
+@pytest.fixture(autouse=True)
+def disable_logger_console_output(monkeypatch):
+    original_setup_logger = SetupLogger.setup_logger
+
+    def setup_logger_without_console(**kwargs):
+        kwargs.setdefault("show_warning_logs_in_console", False)
+        return original_setup_logger(**kwargs)
+
+    monkeypatch.setattr(
+        SetupLogger,
+        "setup_logger",
+        setup_logger_without_console,
+    )
 
 
 @pytest.fixture
