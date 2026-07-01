@@ -126,15 +126,20 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
         relative_to = Path(kwargs.get("relative_to",
                                       getattr(self, "input_path", PROJECT_ROOT))).resolve()
         # print(relative_to)
-        for f_path, f_hash in self.hash_directory():
-            directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
-            yield f_path, f_hash
-        self._record_directory(directory_records, **kwargs)
+        # TODO: put this in a separate method?
+        try:
+            for f_path, f_hash in self.hash_directory():
+                directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
+                yield f_path, f_hash
+        finally:
+            self._record_directory(directory_records, **kwargs)
 
     def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
             if self.file_name.suffix == '.json':
                 dump(directory_records, fp=f,  indent=4)
+            elif self.file_name.suffix in self.__class__.VALID_FILE_TYPES:
+                raise NotImplementedError("Writing to this file type is not yet implemented.")
             else:
                 raise TypeError(f"file_name must be one of the following types: "
                                 f"{', '.join(self.__class__.VALID_FILE_TYPES)}")
