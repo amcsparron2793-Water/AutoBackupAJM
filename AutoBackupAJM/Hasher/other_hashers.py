@@ -62,10 +62,10 @@ class ArchiveFileHasher(LargeFileHasher):
         if unzip_and_hash:
             self.extractor.extract_archive()
             self._logger.info(f"Unzipped archive to {self.extractor.extract_dir}")
-            return self._hash_contents(self.extractor.extract_dir, **kwargs)
+            return [x for x in self._hash_contents(self.extractor.extract_dir, **kwargs)]
         else:
             # hash as one file
-            return self.hash_file(self.input_path, **kwargs)
+            return [x for x in self.hash_file(self.input_path, **kwargs)]
         # raise NotImplementedError("hash_archive is not yet implemented")
 
 
@@ -81,6 +81,7 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
 
     def _handle_path(self, archive_contents: Path, **kwargs):
         self.input_path = archive_contents
+        kwargs.setdefault("relative_to", self.input_path.parent)
         return self.hash_and_record_directory(**kwargs)
 
 

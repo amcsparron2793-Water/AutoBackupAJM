@@ -43,13 +43,18 @@ class DirectoryHasher(FileHasher, HashRecorder):
         for fp in self._walk_directory(dir_path, **kwargs):
             yield self.hash_file(fp, **kwargs)
 
+    def hash_and_record_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
+        kwargs.setdefault("relative_to", self.input_path.parent)
+        return super().hash_and_record_directory(**kwargs)
+
 
 class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
     ...
 
 
 if __name__ == "__main__":
-    dir_hasher = DirectoryHasher(Path("../../logs"))
-    dir_hasher.hash_and_record_directory()
+    dir_hasher = DirectoryHasher(Path("~/Desktop").expanduser())#Path("../../logs"))
+    for x in dir_hasher.hash_and_record_directory():
+        print(x)
     # for x in dir_hasher.hash_directory():
     #     print(x[1])

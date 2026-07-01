@@ -48,7 +48,7 @@ class _Validators:
         paths = [str(p) for p in directory_records.values()]
         try:
             common = Path(commonpath(paths))
-            if common.suffix:
+            if common.suffix or common.as_posix() == '.':
                 common = common.parent.resolve().name
                 self._logger.debug(f"Common directory path is a file, resolving to parent: {common}")
             self._logger.debug(f"Common directory path: {common}")
