@@ -127,10 +127,6 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
                                       getattr(self, "input_path", PROJECT_ROOT))).resolve()
         # print(relative_to)
         for f_path, f_hash in self.hash_directory():
-            # FIXME: is this the right relative path?
-            #  should it be PROJECT_ROOT or dir_path (would need to be passed in)
-            #  regardless, file CONTENT will hash the same
-            #  - need to figure out how to match paths if a file is moved also
             directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
             yield f_path, f_hash
         self._record_directory(directory_records, **kwargs)
