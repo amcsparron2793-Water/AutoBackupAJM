@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from json import dump
-from logging import getLogger
+from logging import getLogger, Logger
 from os.path import commonpath
 from pathlib import Path
 from typing import Union, Optional
@@ -10,6 +10,7 @@ from AutoBackupAJM import PROJECT_ROOT
 
 class _Validators:
     VALID_FILE_TYPES = ['.json']
+    DEFAULT_VALID_FILE_TYPE = VALID_FILE_TYPES[0]
 
     @staticmethod
     def _str_to_path(value: Union[str, Path]) -> Path:
@@ -46,7 +47,10 @@ class _Validators:
     def _get_common_dir_path(self, directory_records: dict) -> Optional[Path]:
         paths = [str(p) for p in directory_records.values()]
         try:
-            common = commonpath(paths)
+            common = Path(commonpath(paths))
+            if common.suffix:
+                common = common.parent.resolve().name
+                self._logger.debug(f"Common directory path is a file, resolving to parent: {common}")
             self._logger.debug(f"Common directory path: {common}")
             return Path(common)
         except ValueError:
@@ -68,8 +72,8 @@ class _Validators:
         if filename:
             if not filename.suffix:
                 self._logger.warning(f"Filename {filename} does not have a suffix, "
-                                     f"adding {self.__class__.VALID_FILE_TYPES[0]}")
-                filename = filename.with_suffix(self.__class__.VALID_FILE_TYPES[0])
+                                     f"adding {self.__class__.DEFAULT_VALID_FILE_TYPE}")
+                filename = filename.with_suffix(self.__class__.DEFAULT_VALID_FILE_TYPE)
             return filename
         else:
             self._logger.warning("No common directory found, using default file name.")
@@ -83,9 +87,10 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
     def __init__(self, **kwargs):
         self._file_name = None
         self._record_save_dir = None
-        self._logger = kwargs.get("logger", None)
+        # noinspection PyTypeChecker
+        self._logger: Logger = kwargs.get("logger", None)
         if not self._logger:
-            self._logger = getLogger(self.__class__.__name__)
+            self._logger: Logger = getLogger(self.__class__.__name__)
 
         self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
         self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
@@ -118,14 +123,17 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
 
     def hash_and_record_directory(self, **kwargs):
         directory_records = {}
+        relative_to = Path(kwargs.get("relative_to",
+                                      getattr(self, "input_path", PROJECT_ROOT))).resolve()
+        # print(relative_to)
         for f_path, f_hash in self.hash_directory():
             # FIXME: is this the right relative path?
             #  should it be PROJECT_ROOT or dir_path (would need to be passed in)
             #  regardless, file CONTENT will hash the same
             #  - need to figure out how to match paths if a file is moved also
-            directory_records[f_hash] = f_path.relative_to(PROJECT_ROOT).as_posix()
+            directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
+            yield f_path, f_hash
         self._record_directory(directory_records, **kwargs)
-        return directory_records
 
     def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
