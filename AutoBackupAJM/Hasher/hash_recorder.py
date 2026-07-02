@@ -1,3 +1,4 @@
+import datetime
 from abc import abstractmethod, ABCMeta
 from json import dump
 from logging import getLogger, Logger
@@ -127,12 +128,15 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
                                       getattr(self, "input_path", PROJECT_ROOT))).resolve()
         # print(relative_to)
         # TODO: put this in a separate method?
+        start_time = datetime.datetime.now()
         try:
             for f_path, f_hash in self.hash_directory():
                 directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
                 yield f_path, f_hash
         finally:
             self._record_directory(directory_records, **kwargs)
+            end_time = datetime.datetime.now()
+            self._logger.debug(f"Directory hashed and recorded in {(end_time - start_time).total_seconds():.2f} seconds .")
 
     def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
