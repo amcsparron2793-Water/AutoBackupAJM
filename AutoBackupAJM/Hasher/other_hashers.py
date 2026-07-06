@@ -62,10 +62,10 @@ class ArchiveFileHasher(LargeFileHasher):
         if unzip_and_hash:
             self.extractor.extract_archive()
             self._logger.info(f"Unzipped archive to {self.extractor.extract_dir}")
-            return self._hash_contents(self.extractor.extract_dir, **kwargs)
+            return [x for x in self._hash_contents(self.extractor.extract_dir, **kwargs)]
         else:
             # hash as one file
-            return self.hash_file(self.input_path, **kwargs)
+            return [x for x in self.hash_file(self.input_path, **kwargs)]
         # raise NotImplementedError("hash_archive is not yet implemented")
 
 
@@ -75,17 +75,18 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
         if is_single_file:
             raise AttributeError("use ArchiveFileHasher to hash the contents of this file")
         else:
+            # FIXME: what was this for?
             print([x.parent for x in archive_contents])
             exit(-1)
 
     def _handle_path(self, archive_contents: Path, **kwargs):
         self.input_path = archive_contents
-        return self.hash_directory(**kwargs)
+        kwargs.setdefault("relative_to", self.input_path.parent)
+        return self.hash_and_record_directory(**kwargs)
 
 
 if __name__ == "__main__":
-    # TODO: functional, but needs a way to record and compare hashes -
+    # TODO: functional, but needs a way to compare hashes -
     #  also needs to be integrated with factory and tests
     AH = ArchiveDirectoryHasher('../../Misc_Project_Files/HostedFeatureStorage.zip')
-    archive_hash = AH.hash_archive(unzip_and_hash_contents=False)
-    print([x for x in archive_hash])
+    archive_hash = AH.hash_archive(unzip_and_hash_contents=True)
