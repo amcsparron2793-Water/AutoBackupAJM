@@ -60,6 +60,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
 
         # TODO: multithreading?
+        # TODO: tqdm?
         for fp in self._walk_directory(dir_path, **kwargs):
             yield self.hash_file(fp, **kwargs)
 

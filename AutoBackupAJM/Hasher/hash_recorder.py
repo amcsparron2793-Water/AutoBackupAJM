@@ -81,24 +81,21 @@ class _Validators:
             return None
 
 
-class HashRecorder(_Validators, metaclass=ABCMeta):
+class _Recorder(_Validators):
     DEFAULT_FILE_NAME = "directory_hashes.json"
     DEFAULT_RECORD_SAVE_DIR = Path(PROJECT_ROOT / "Misc_Project_Files")
 
     def __init__(self, **kwargs):
+        self._logger = self._check_and_get_logger(**kwargs)
         self._file_name = None
         self._record_save_dir = None
+
+    def _check_and_get_logger(self, **kwargs):
         # noinspection PyTypeChecker
-        self._logger: Logger = kwargs.get("logger", None)
-        if not self._logger:
-            self._logger: Logger = getLogger(self.__class__.__name__)
-
-        self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
-        self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
-
-    @abstractmethod
-    def hash_directory(self):
-        ...
+        _logger = kwargs.get("logger", None)
+        if not _logger:
+            _logger: Logger = getLogger(self.__class__.__name__)
+        return _logger
 
     @property
     def record_save_dir(self):
@@ -141,15 +138,28 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
 
         self._write_directory_record_file(directory_records, **kwargs)
 
-    def _gen_dir_hashes(self):
-        for f_path, f_hash in self.hash_directory():
-            yield f_path, f_hash
-
     def _record_and_cleanup(self, directory_records: dict, start_time: datetime.datetime, **kwargs):
         self._record_directory(directory_records, **kwargs)
         end_time = datetime.datetime.now()
         self._logger.debug(f"Directory hashed and recorded in {(end_time - start_time)} .")
         return directory_records
+
+
+class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+        self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
+        self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
+
+    @abstractmethod
+    def hash_directory(self):
+        ...
+
+    def _gen_dir_hashes(self):
+        for f_path, f_hash in self.hash_directory():
+            yield f_path, f_hash
 
     def hash_and_record_directory(self, **kwargs):
         directory_records = {}
@@ -159,7 +169,6 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
         try:
             for f_path, f_hash in self._gen_dir_hashes():
                 directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
-                raise Exception("test for test for test")
         except KeyboardInterrupt:
             self._logger.error("Hashing interrupted by user. Hashed files will still be written to disk.")
         except Exception as e:
