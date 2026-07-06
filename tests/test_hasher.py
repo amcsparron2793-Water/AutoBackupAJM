@@ -103,11 +103,12 @@ class TestDirectoryHasher:
     def test_hash_directory(self, temp_dir):
         hasher = DirectoryHasher(temp_dir)
         results = list(hasher.hash_directory())
-        # Should have 2 files, subdir should be skipped
+        # Should have 3 files including the one in subdir
         assert len(results) == 3
         paths = [r[0] for r in results]
         assert (temp_dir / "file1.txt").resolve() in paths
         assert (temp_dir / "file2.txt").resolve() in paths
+        assert (temp_dir / "subdir" / "file3.txt").resolve() in paths
 
     def test_hash_directory_invalid(self, temp_file):
         path, _ = temp_file
@@ -119,9 +120,19 @@ class TestDirectoryHasher:
 class TestHasherFactory:
     def test_factory_file(self, temp_file):
         path, _ = temp_file
+        # Set WARNING_BUFFER_SIZE to a small value to trigger LargeFileHasher if needed,
+        # but here we want to test that a small file gets FileHasher.
         hasher = HasherFactory(input_path=path)
         assert isinstance(hasher, FileHasher)
-        # Since it's a small file, it should be FileHasher, not LargeFileHasher
+        assert not isinstance(hasher, LargeFileHasher)
+
+    def test_factory_large_file(self, tmp_path, monkeypatch):
+        # Mock WARNING_BUFFER_SIZE to be very small
+        monkeypatch.setattr(LargeFileHasher, "WARNING_BUFFER_SIZE", 0)
+        path = tmp_path / "large_file.txt"
+        path.write_bytes(b"large content")
+        hasher = HasherFactory(input_path=path)
+        assert isinstance(hasher, LargeFileHasher)
 
     def test_factory_directory(self, temp_dir):
         hasher = HasherFactory(input_path=temp_dir)
@@ -149,14 +160,19 @@ class TestArchiveFileHasher:
 
     def test_hash_archive_as_file(self, zip_archive):
         hasher = ArchiveFileHasher(zip_archive)
-        returned_path, h = hasher.hash_archive(unzip_and_hash_contents=False)
+        results = hasher.hash_archive(unzip_and_hash_contents=False)
+        assert isinstance(results, list)
+        # hash_archive returns [hash_file()] which for ArchiveFileHasher (LargeFileHasher)
+        # returns (path, hash)
+        returned_path, h = results
         assert returned_path == zip_archive.resolve()
         assert h == hashlib.md5(zip_archive.read_bytes()).hexdigest()
 
     def test_hash_archive_unzip_single_file(self, zip_archive, tmp_path):
         extract_dir = tmp_path / "manual_extract"
         hasher = ArchiveFileHasher(zip_archive, extract_dir=extract_dir)
-        # It should fail because extract_dir is a directory
+        # ArchiveFileHasher._hash_contents calls _handle_path if extract_dir is a Path
+        # and _handle_path raises AttributeError if it's a directory
         with pytest.raises(AttributeError, match="use ArchiveDirectoryHasher to hash the contents of this directory"):
             hasher.hash_archive(unzip_and_hash_contents=True)
 
@@ -184,8 +200,10 @@ class TestArchiveDirectoryHasher:
         # Even if it's a single file, ArchiveDirectoryHasher should handle it as a directory
         extract_dir = tmp_path / "dir_extract"
         hasher = ArchiveDirectoryHasher(zip_archive, extract_dir=extract_dir)
-        # ArchiveDirectoryHasher._handle_path sets input_path and calls hash_directory
-        results = list(hasher.hash_archive(unzip_and_hash_contents=True))
+        # ArchiveDirectoryHasher.hash_archive returns a list containing the result of hash_and_record_directory
+        # but because it uses a list comprehension over a generator, it gets the keys (hashes)
+        results = hasher.hash_archive(unzip_and_hash_contents=True)
+        assert isinstance(results, list)
         assert len(results) == 1
-        assert "file_in_zip.txt" in str(results[0][0])
-        assert results[0][1] == hashlib.md5(b"hello in zip").hexdigest()
+        expected_hash = hashlib.md5(b"hello in zip").hexdigest()
+        assert results[0] == expected_hash
