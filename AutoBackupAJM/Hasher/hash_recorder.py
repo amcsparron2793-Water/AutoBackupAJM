@@ -4,7 +4,7 @@ from json import dump
 from logging import getLogger, Logger
 from os.path import commonpath
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Generator
 
 from AutoBackupAJM import PROJECT_ROOT
 
@@ -146,8 +146,12 @@ class _Recorder(_Validators):
 
 
 class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
+    FILE_STILL_WRITTEN_MSG = "Hashed files will still be written to disk if possible."
+    BASE_CRIT_LOG_MSG = ("An unexpected error occurred during hashing: "
+                         "{}. ")
 
     def __init__(self, **kwargs):
+        self._base_crit_log_msg = None
         super().__init__(**kwargs)
 
         self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
@@ -157,7 +161,16 @@ class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
     def hash_directory(self):
         ...
 
-    def _gen_dir_hashes(self):
+    @property
+    def crit_log_msg(self):
+        return self._base_crit_log_msg
+
+    @crit_log_msg.setter
+    def crit_log_msg(self, exception: Exception):
+        fmt_msg = f"\'{exception.__class__.__name__}: {exception}\' {self.__class__.FILE_STILL_WRITTEN_MSG}"
+        self._base_crit_log_msg = self.__class__.BASE_CRIT_LOG_MSG.format(fmt_msg)
+
+    def _gen_dir_hashes(self) -> Generator[tuple[Path, str], None, None]:
         for f_path, f_hash in self.hash_directory():
             yield f_path, f_hash
 
@@ -165,16 +178,16 @@ class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
         directory_records = {}
         relative_to = Path(kwargs.get("relative_to",
                                       getattr(self, "input_path", PROJECT_ROOT))).resolve()
+
         start_time = datetime.datetime.now()
+
         try:
             for f_path, f_hash in self._gen_dir_hashes():
                 directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
         except KeyboardInterrupt:
-            self._logger.error("Hashing interrupted by user. Hashed files will still be written to disk.")
+            self._logger.error(f"Hashing interrupted by user. {self.__class__.FILE_STILL_WRITTEN_MSG}")
         except Exception as e:
-            crit_log_msg = (f"An unexpected error occurred during hashing: "
-                            f"\'{e.__class__.__name__}: {e}\'. "
-                            f"Hashed files will still be written to disk if possible.")
-            self._logger.critical(crit_log_msg, exc_info=True)
+            self.crit_log_msg = e
+            self._logger.critical(self.crit_log_msg, exc_info=True)
         finally:
             return self._record_and_cleanup(directory_records, start_time, **kwargs)
