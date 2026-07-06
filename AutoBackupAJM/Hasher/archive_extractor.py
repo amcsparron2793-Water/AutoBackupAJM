@@ -1,6 +1,7 @@
 import shutil
-from logging import getLogger
+from logging import getLogger, Logger
 from pathlib import Path
+from tempfile import gettempdir
 from typing import Union
 from itertools import chain
 
@@ -9,16 +10,29 @@ class ArchiveExtractor:
     SUPPORTED_ARCHIVE_TYPES = list(chain.from_iterable(
         [x for x in [x[1] for x in shutil.get_unpack_formats()]]
     ))
+    TEMP_DIR = Path(gettempdir())
 
     def __init__(self, archive_path: Path, **kwargs):
         self._extract_dir = None
         self._archive_contents = None
-        self.logger = kwargs.get("logger", None)
+        # noinspection PyTypeChecker
+        self.logger: Logger = kwargs.get("logger", None)
         if not self.logger:
-            self.logger = getLogger(self.__class__.__name__)
+            self.logger: Logger = getLogger(self.__class__.__name__)
 
+        self.use_temp_dir = kwargs.get("use_temp_dir", True)
         self.archive_path = archive_path
         self.extract_dir = kwargs.get("extract_dir", None)
+
+    def _get_default_extract_dir(self):
+        if self.use_temp_dir:
+            self.logger.debug(f"Using temp dir: {self.__class__.TEMP_DIR}")
+            _extract_dir = Path(self.__class__.TEMP_DIR / self.archive_path.stem).resolve()
+        else:
+            self.logger.debug(f"Using parent dir: {self.archive_path.parent}")
+            _extract_dir = Path(self.archive_path.parent / self.archive_path.stem).resolve()
+        self.logger.info(f"extract_dir not specified, defaulting to {_extract_dir}")
+        return _extract_dir
 
     @property
     def extract_dir(self):
@@ -27,8 +41,7 @@ class ArchiveExtractor:
     @extract_dir.setter
     def extract_dir(self, value: Union[str, Path]):
         if value is None:
-            self._extract_dir = Path(self.archive_path.parent / self.archive_path.stem).resolve()
-            self.logger.info(f"extract_dir not specified, defaulting to {self._extract_dir}")
+            self._extract_dir = self._get_default_extract_dir()
         else:
             resolved_path = Path(value).resolve()
             if resolved_path.suffix:

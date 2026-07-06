@@ -21,9 +21,14 @@ def zip_archive(tmp_path):
 
 
 class TestArchiveExtractor:
-    def test_init_default_extract_dir(self, zip_archive):
-        extractor = ArchiveExtractor(zip_archive)
+    def test_init_default_extract_dir_no_temp(self, zip_archive):
+        extractor = ArchiveExtractor(zip_archive, use_temp_dir=False)
         expected_dir = (zip_archive.parent / zip_archive.stem).resolve()
+        assert extractor.extract_dir == expected_dir
+
+    def test_init_default_extract_dir_use_temp(self, zip_archive):
+        extractor = ArchiveExtractor(zip_archive)
+        expected_dir = (extractor.__class__.TEMP_DIR / zip_archive.stem).resolve()
         assert extractor.extract_dir == expected_dir
 
     def test_init_custom_extract_dir(self, zip_archive, tmp_path):
