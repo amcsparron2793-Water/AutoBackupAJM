@@ -74,8 +74,7 @@ class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
 
 if __name__ == "__main__":
     dir_hasher = DirectoryHasher(Path("~/Desktop").expanduser())#Path("../../logs"))
-    for x in dir_hasher.hash_and_record_directory():
-        ...
+    hr = dir_hasher.hash_and_record_directory()
         #print(x)
     # for x in dir_hasher.hash_directory():
     #     print(x[1])

@@ -122,26 +122,10 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
     def record_path(self):
         return self.record_save_dir / self.file_name
 
-    def hash_and_record_directory(self, **kwargs):
-        directory_records = {}
-        relative_to = Path(kwargs.get("relative_to",
-                                      getattr(self, "input_path", PROJECT_ROOT))).resolve()
-        # print(relative_to)
-        # TODO: put this in a separate method?
-        start_time = datetime.datetime.now()
-        try:
-            for f_path, f_hash in self.hash_directory():
-                directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
-                yield f_path, f_hash
-        finally:
-            self._record_directory(directory_records, **kwargs)
-            end_time = datetime.datetime.now()
-            self._logger.debug(f"Directory hashed and recorded in {(end_time - start_time).total_seconds():.2f} seconds .")
-
     def _write_directory_record_file(self, directory_records: dict, **kwargs):
         with open(self.record_path, "w") as f:
             if self.file_name.suffix == '.json':
-                dump(directory_records, fp=f,  indent=4)
+                dump(directory_records, fp=f, indent=4)
             elif self.file_name.suffix in self.__class__.VALID_FILE_TYPES:
                 raise NotImplementedError("Writing to this file type is not yet implemented.")
             else:
@@ -156,3 +140,32 @@ class HashRecorder(_Validators, metaclass=ABCMeta):
             self._logger.info(f"Using common dir filename {self.file_name} for directory hashes file.")
 
         self._write_directory_record_file(directory_records, **kwargs)
+
+    def _gen_dir_hashes(self):
+        for f_path, f_hash in self.hash_directory():
+            yield f_path, f_hash
+
+    def _record_and_cleanup(self, directory_records: dict, start_time: datetime.datetime, **kwargs):
+        self._record_directory(directory_records, **kwargs)
+        end_time = datetime.datetime.now()
+        self._logger.debug(f"Directory hashed and recorded in {(end_time - start_time)} .")
+        return directory_records
+
+    def hash_and_record_directory(self, **kwargs):
+        directory_records = {}
+        relative_to = Path(kwargs.get("relative_to",
+                                      getattr(self, "input_path", PROJECT_ROOT))).resolve()
+        start_time = datetime.datetime.now()
+        try:
+            for f_path, f_hash in self._gen_dir_hashes():
+                directory_records[f_hash] = f_path.relative_to(relative_to).as_posix()
+                raise Exception("test for test for test")
+        except KeyboardInterrupt:
+            self._logger.error("Hashing interrupted by user. Hashed files will still be written to disk.")
+        except Exception as e:
+            crit_log_msg = (f"An unexpected error occurred during hashing: "
+                            f"\'{e.__class__.__name__}: {e}\'. "
+                            f"Hashed files will still be written to disk if possible.")
+            self._logger.critical(crit_log_msg, exc_info=True)
+        finally:
+            return self._record_and_cleanup(directory_records, start_time, **kwargs)
