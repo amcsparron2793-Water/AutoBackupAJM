@@ -87,14 +87,20 @@ class _Recorder(_Validators):
 
     def __init__(self, **kwargs):
         self._logger = self._check_and_get_logger(**kwargs)
+        self._logger.debug(f"Logger name changing from {self._logger.name} to {self.__class__.__name__}")
+        self._logger.name = self.__class__.__name__
         self._file_name = None
         self._record_save_dir = None
 
-    def _check_and_get_logger(self, **kwargs):
+        self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
+        self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
+
+    @classmethod
+    def _check_and_get_logger(cls, **kwargs) -> Logger:
         # noinspection PyTypeChecker
         _logger = kwargs.get("logger", None)
         if not _logger:
-            _logger: Logger = getLogger(self.__class__.__name__)
+            _logger: Logger = getLogger(cls.__name__)
         return _logger
 
     @property
@@ -145,7 +151,7 @@ class _Recorder(_Validators):
         return directory_records
 
 
-class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
+class HashRecorder(_Recorder, metaclass=ABCMeta):
     FILE_STILL_WRITTEN_MSG = "Hashed files will still be written to disk if possible."
     BASE_CRIT_LOG_MSG = ("An unexpected error occurred during hashing: "
                          "{}. ")
@@ -153,9 +159,6 @@ class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
     def __init__(self, **kwargs):
         self._base_crit_log_msg = None
         super().__init__(**kwargs)
-
-        self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
-        self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
 
     @abstractmethod
     def hash_directory(self):
@@ -174,7 +177,7 @@ class HashRecorder(_Recorder, _Validators, metaclass=ABCMeta):
         for f_path, f_hash in self.hash_directory():
             yield f_path, f_hash
 
-    def hash_and_record_directory(self, **kwargs):
+    def hash_and_record_directory(self, **kwargs) -> dict:
         directory_records = {}
         relative_to = Path(kwargs.get("relative_to",
                                       getattr(self, "input_path", PROJECT_ROOT))).resolve()

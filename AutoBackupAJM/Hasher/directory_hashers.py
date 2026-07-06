@@ -33,25 +33,44 @@ class DirectoryHasher(FileHasher, HashRecorder):
             raise ValueError(f"self.input_path must be a directory, to hash a file use hash_file")
         return dir_path
 
-    def _walk_directory(self, dir_path: Path, **kwargs):
+    def _count_and_continue(self, parent_counter: int, child_counter: int,
+                            current_dir: Path, **kwargs) -> Tuple[int, int, bool]:
         ignore_system_dirs = kwargs.get("ignore_system_dirs", self.ignore_system_dirs)
+
+        if ignore_system_dirs:
+            if self._parent_is_system_dir(current_dir):
+                child_counter += 1
+                return child_counter, parent_counter, True
+            elif self._curr_dir_is_system_dir(current_dir):
+                self._logger.debug(f"Ignoring system directory {current_dir}")
+                parent_counter += 1
+                return parent_counter, child_counter, True
+
+        return parent_counter, child_counter, False
+
+    @staticmethod
+    def _gen_walk_full_dir_path(current_dir: Path, files: list):
+        for file in files:
+            full_path = current_dir / file
+            yield full_path
+
+    def _walk_directory(self, dir_path: Path, **kwargs):
         parent_counter = 0
         child_counter = 0
+        total_counter = 0
 
         for current_dir, subdirs, files in dir_path.walk(): #dir_path.iterdir():
-            if ignore_system_dirs:
-                if self._parent_is_system_dir(current_dir):
-                    child_counter += 1
-                    continue
-                elif self._curr_dir_is_system_dir(current_dir):
-                    self._logger.debug(f"Ignoring system directory {current_dir}")
-                    parent_counter += 1
-                    continue
+            # see if we should continue walking
+            parent_counter, child_counter, should_continue = self._count_and_continue(
+                parent_counter, child_counter, current_dir, **kwargs
+            )
+            if should_continue:
+                total_counter += 1
+                continue
 
-            for file in files:
-                full_path = current_dir / file
-                yield full_path
-        self._logger.info(f"Ignored {parent_counter: ,} parent directories "
+            yield from self._gen_walk_full_dir_path(current_dir, files)
+        self._logger.info(f"Ignored a total of {total_counter: ,} directories,"
+                          f" including {parent_counter: ,} parent directories "
                           f"and {child_counter: ,} child directories.")
 
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
@@ -64,7 +83,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
         for fp in self._walk_directory(dir_path, **kwargs):
             yield self.hash_file(fp, **kwargs)
 
-    def hash_and_record_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
+    def hash_and_record_directory(self, **kwargs) -> dict: #Generator[Tuple[Union[Path, str], str], None, None]:
         kwargs.setdefault("relative_to", self.input_path.parent)
         return super().hash_and_record_directory(**kwargs)
 
