@@ -6,7 +6,6 @@ from AutoBackupAJM.Hasher.directory_hashers import LargeDirectoryHasher
 from AutoBackupAJM.Hasher.file_hashers import LargeFileHasher
 
 
-# TODO: if file is archive, option to unzip and hash contents
 class ArchiveFileHasher(LargeFileHasher):
     ARCHIVE_FILE_TYPES = ArchiveExtractor.SUPPORTED_ARCHIVE_TYPES  # ['.zip', '.tar', '.tar.gz', '.tar.bz2', '.7z', '.rar']
 
