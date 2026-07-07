@@ -77,7 +77,7 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
 
         kwargs.setdefault('logger', self.logger)
 
-        self._override_target_json(**kwargs)
+        self._override_passed_in_target_json(**kwargs)
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
@@ -106,7 +106,7 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         # noinspection PyTypeChecker
         return self._archive_hash
 
-    def _override_target_json(self, **kwargs):
+    def _override_passed_in_target_json(self, **kwargs):
         if 'target_json' in kwargs:
             try:
                 raise ValueError("target_json attribute cannot be "
