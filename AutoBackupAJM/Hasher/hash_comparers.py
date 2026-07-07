@@ -1,10 +1,11 @@
 import json
 from pathlib import Path
-from typing import Union
+from typing import Union, List
 from AutoBackupAJM import SetupLogger
+from AutoBackupAJM.Hasher.other_hashers import ArchiveDirectoryHasher
 
 
-class JsonHashComparer:
+class JsonToJsonHashComparer:
     def __init__(self, source_json: Union[list, dict, Path],
                  target_json: Union[list, dict, Path], **kwargs):
         self._source_json = None
@@ -19,10 +20,9 @@ class JsonHashComparer:
         self.source_json = source_json
         self.target_json = target_json
 
-    def _get_json(self, value: Union[Path, list, dict]):
+    def _get_json(self, value: Union[Path, list, dict], **kwargs):
         if isinstance(value, Path):
-
-            value = self._load_json(value)
+            value = self._load_json(value, **kwargs)
         elif isinstance(value, (list, dict)):
             # just pass it through
             pass
@@ -31,7 +31,7 @@ class JsonHashComparer:
         return value
 
     @staticmethod
-    def _load_json(path_to_json: Path):
+    def _load_json(path_to_json: Path, **kwargs):
         if isinstance(path_to_json, Path):
             with open(path_to_json, 'r') as f:
                 return json.load(f)
