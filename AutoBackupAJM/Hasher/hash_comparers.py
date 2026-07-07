@@ -82,8 +82,21 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         kwargs.setdefault('target_name', self.archive_file.name)
-        kwargs.setdefault('target_json', self.archive_hash)
+        kwargs.setdefault('target_json', None)
         super().__init__(**kwargs)
+
+    @property
+    def target_json(self):
+        return self.archive_hash
+
+    @target_json.setter
+    def target_json(self, value):
+        try:
+            raise ValueError("target_json cannot be set"
+                             "when using JsonToArchiveComparer, "
+                             "value is locked to self.archive_hash")
+        except Exception as e:
+            self.logger.warning(e)
 
     @property
     def archive_hash(self) -> Union[dict, List[dict]]:
@@ -108,6 +121,8 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         self.logger.info(f"Archive hasher initialized for {archive_file.name}")
         return archive_file, archive_hasher, kwargs
 
+
+# TODO: ArchiveToArchiveComparer
 
 
 if __name__ == '__main__':
