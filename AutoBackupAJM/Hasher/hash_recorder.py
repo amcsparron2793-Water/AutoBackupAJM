@@ -6,7 +6,7 @@ from os.path import commonpath
 from pathlib import Path
 from typing import Union, Optional, Generator
 
-from AutoBackupAJM import PROJECT_ROOT
+from AutoBackupAJM import PROJECT_ROOT, SetupLogger
 
 
 class _Validators:
@@ -86,7 +86,7 @@ class _Recorder(_Validators):
     DEFAULT_RECORD_SAVE_DIR = Path(PROJECT_ROOT / "Misc_Project_Files")
 
     def __init__(self, **kwargs):
-        self._logger = self._check_and_get_logger(**kwargs)
+        self._logger = SetupLogger.setup_logger(**kwargs)
         self._logger.debug(f"Logger name changing from {self._logger.name} to {self.__class__.__name__}")
         self._logger.name = self.__class__.__name__
         self._file_name = None
@@ -94,14 +94,6 @@ class _Recorder(_Validators):
 
         self.file_name = kwargs.get("file_name", self.__class__.DEFAULT_FILE_NAME)
         self.record_save_dir = kwargs.get("record_save_dir", self.__class__.DEFAULT_RECORD_SAVE_DIR)
-
-    @classmethod
-    def _check_and_get_logger(cls, **kwargs) -> Logger:
-        # noinspection PyTypeChecker
-        _logger = kwargs.get("logger", None)
-        if not _logger:
-            _logger: Logger = getLogger(cls.__name__)
-        return _logger
 
     @property
     def record_save_dir(self):

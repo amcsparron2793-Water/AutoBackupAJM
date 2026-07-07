@@ -5,6 +5,8 @@ from tempfile import gettempdir
 from typing import Union
 from itertools import chain
 
+from AutoBackupAJM import SetupLogger
+
 
 class ArchiveExtractor:
     SUPPORTED_ARCHIVE_TYPES = list(chain.from_iterable(
@@ -16,9 +18,7 @@ class ArchiveExtractor:
         self._extract_dir = None
         self._archive_contents = None
         # noinspection PyTypeChecker
-        self.logger: Logger = kwargs.get("logger", None)
-        if not self.logger:
-            self.logger: Logger = getLogger(self.__class__.__name__)
+        self.logger: Logger = SetupLogger.setup_logger(**kwargs)
 
         self.use_temp_dir = kwargs.get("use_temp_dir", True)
         self.archive_path = archive_path
