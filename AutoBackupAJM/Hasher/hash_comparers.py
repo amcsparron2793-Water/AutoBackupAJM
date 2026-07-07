@@ -59,14 +59,42 @@ class JsonToJsonHashComparer:
             if key not in self.target_json:
                 self.logger.error(f"Key {key} not found in {self.target_name}")
                 return False
+        self.logger.info("All keys found in both JSON files.")
         return True
 
 
+class JsonToArchiveComparer(JsonToJsonHashComparer):
+    def __init__(self, archive_file: Path, **kwargs):
+        self.logger = SetupLogger.setup_logger(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
+        if 'target_json' in kwargs:
+            raise ValueError("target_json cannot be provided when using JsonToArchiveComparer")
+
+        self.archive_file = archive_file
+        kwargs.setdefault('unzip_and_hash_contents', True)
+
+        self.archive_hasher = ArchiveDirectoryHasher(input_path=self.archive_file, **kwargs)
+
+        kwargs.setdefault('target_name', self.archive_file.name)
+        kwargs.setdefault('target_json', self.archive_hasher.hash_archive())
+
+        super().__init__(**kwargs)
+
+
+
 if __name__ == '__main__':
-    test_backup_json = Path("../../Misc_Project_Files/Desktop_backup.json")
-    test_new_json = Path("../../Misc_Project_Files/Desktop.json")
-    jhc = JsonHashComparer(source_json=test_backup_json,
-                           target_json=test_new_json,
-                           source_name=test_new_json.name,
-                           target_name=test_new_json.name)
-    jhc.compare()
+    test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
+    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
+    # j2j_hc = JsonToJsonHashComparer(source_json=test_backup_json,
+    #                                 target_json=test_new_json,
+    #                                 source_name=test_new_json.name,
+    #                                 target_name=test_new_json.name)
+
+    j2a_hc = JsonToArchiveComparer(source_json=test_backup_json,
+                                   archive_file=test_new_json,
+                                   # target_json=test_new_json,
+                                   source_name=test_new_json.name,
+                                   target_name=test_new_json.name)
+
+    j2a_hc.compare()
