@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Union, List
+from typing import Union, List, Tuple
 from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher.other_hashers import ArchiveDirectoryHasher
 
@@ -14,11 +14,16 @@ class JsonToJsonHashComparer:
         self.source_name = kwargs.get("source_name", "source_json")
         self.target_name = kwargs.get("target_name", "target_json")
 
-        self.logger = SetupLogger.setup_logger(**kwargs)
-        self.logger.name = self.__class__.__name__
-        self.logger.info(f"Initializing {self.__class__.__name__}")
+        self.logger = self.setup_logger(**kwargs)
         self.source_json = source_json
         self.target_json = target_json
+
+    @classmethod
+    def setup_logger(cls, **kwargs):
+        logger = SetupLogger.setup_logger(**kwargs)
+        logger.name = cls.__name__
+        logger.info(f"Initializing {cls.__name__}")
+        return logger
 
     def _get_json(self, value: Union[Path, list, dict], **kwargs):
         if isinstance(value, Path):
@@ -34,7 +39,9 @@ class JsonToJsonHashComparer:
     def _load_json(path_to_json: Path, **kwargs):
         if isinstance(path_to_json, Path):
             with open(path_to_json, 'r') as f:
-                return json.load(f)
+                if path_to_json.suffix == '.json':
+                    return json.load(f)
+                raise ValueError(f"File {path_to_json} is not a JSON file")
         else:
             raise TypeError("path_to_json must be a Path")
 
@@ -65,21 +72,41 @@ class JsonToJsonHashComparer:
 
 class JsonToArchiveComparer(JsonToJsonHashComparer):
     def __init__(self, archive_file: Path, **kwargs):
-        self.logger = SetupLogger.setup_logger(**kwargs)
+        self._archive_hash = None
+        self.logger = self.setup_logger(**kwargs)
+
         kwargs.setdefault('logger', self.logger)
 
-        if 'target_json' in kwargs:
-            raise ValueError("target_json cannot be provided when using JsonToArchiveComparer")
+        self._override_target_json(**kwargs)
 
-        self.archive_file = archive_file
-        kwargs.setdefault('unzip_and_hash_contents', True)
-
-        self.archive_hasher = ArchiveDirectoryHasher(input_path=self.archive_file, **kwargs)
+        self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         kwargs.setdefault('target_name', self.archive_file.name)
-        kwargs.setdefault('target_json', self.archive_hasher.hash_archive())
-
+        kwargs.setdefault('target_json', self.archive_hash)
         super().__init__(**kwargs)
+
+    @property
+    def archive_hash(self) -> Union[dict, List[dict]]:
+        if self._archive_hash is None:
+            self.logger.info(f"Hashing archive file {self.archive_file.name}")
+            self._archive_hash = self.archive_hasher.hash_archive()
+        # noinspection PyTypeChecker
+        return self._archive_hash
+
+    def _override_target_json(self, **kwargs):
+        if 'target_json' in kwargs:
+            try:
+                raise ValueError("target_json attribute cannot be "
+                                 "provided when using JsonToArchiveComparer")
+            except Exception as e:
+                self.logger.error(e)
+                raise
+
+    def setup_archive_hasher(self, archive_file: Path, **kwargs) -> Tuple[Path, ArchiveDirectoryHasher, dict]:
+        kwargs.setdefault('unzip_and_hash_contents', True)
+        archive_hasher = ArchiveDirectoryHasher(input_path=archive_file, **kwargs)
+        self.logger.info(f"Archive hasher initialized for {archive_file.name}")
+        return archive_file, archive_hasher, kwargs
 
 
 
@@ -92,9 +119,6 @@ if __name__ == '__main__':
     #                                 target_name=test_new_json.name)
 
     j2a_hc = JsonToArchiveComparer(source_json=test_backup_json,
-                                   archive_file=test_new_json,
-                                   # target_json=test_new_json,
-                                   source_name=test_new_json.name,
-                                   target_name=test_new_json.name)
+                                   archive_file=test_new_json)
 
     j2a_hc.compare()
