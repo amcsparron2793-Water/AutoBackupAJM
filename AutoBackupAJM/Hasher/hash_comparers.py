@@ -154,9 +154,6 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
 
 
 # TODO: ArchiveToArchiveComparer
-# FIXME: this doesnt read the hashes correctly.
-#  It returns a list of just the hashes instead
-#  of dicts of hash=key path=value
 class ArchiveToArchiveComparer(JsonToArchiveComparer):
     def __init__(self, source_archive_file: Path, target_archive_file: Path, **kwargs):
         self._source_archive_hash = None
@@ -210,7 +207,7 @@ class _QuickTest:
     test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
     test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
     test_other_zip = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.zip")
-    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
+    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.json")
 
     def __init__(self, jj=False, ja=False, aa=False, **kwargs):
         self.hc = None

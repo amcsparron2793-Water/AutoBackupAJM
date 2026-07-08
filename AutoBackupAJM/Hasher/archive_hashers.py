@@ -56,12 +56,20 @@ class ArchiveFileHasher(LargeFileHasher):
         else:
             raise TypeError("archive_contents must be a list of Path objects or a single Path object")
 
+    def _unzip_and_hash(self, **kwargs):
+        self.extractor.extract_archive()
+        self._logger.info(f"Unzipped archive to {self.extractor.extract_dir}")
+
+        _hash_contents = self._hash_contents(self.extractor.extract_dir, **kwargs)
+        if isinstance(_hash_contents, dict):
+            return _hash_contents
+        else:
+            return [x for x in _hash_contents]
+
     def hash_archive(self, **kwargs):
         unzip_and_hash = kwargs.get("unzip_and_hash_contents", self.unzip_and_hash_contents)
         if unzip_and_hash:
-            self.extractor.extract_archive()
-            self._logger.info(f"Unzipped archive to {self.extractor.extract_dir}")
-            return [x for x in self._hash_contents(self.extractor.extract_dir, **kwargs)]
+            return self._unzip_and_hash(**kwargs)
         else:
             # hash as one file
             return [x for x in self.hash_file(self.input_path, **kwargs)]
