@@ -201,10 +201,12 @@ class TestArchiveDirectoryHasher:
         # Even if it's a single file, ArchiveDirectoryHasher should handle it as a directory
         extract_dir = tmp_path / "dir_extract"
         hasher = ArchiveDirectoryHasher(zip_archive, extract_dir=extract_dir)
-        # ArchiveDirectoryHasher.hash_archive returns a list containing the result of hash_and_record_directory
-        # but because it uses a list comprehension over a generator, it gets the keys (hashes)
+        # ArchiveDirectoryHasher.hash_archive returns a dict if unzip_and_hash_contents=True
         results = hasher.hash_archive(unzip_and_hash_contents=True)
-        assert isinstance(results, list)
+
+        assert isinstance(results, dict)
         assert len(results) == 1
+
         expected_hash = hashlib.md5(b"hello in zip").hexdigest()
-        assert results[0] == expected_hash
+        assert expected_hash in results
+        assert results[expected_hash] == "dir_extract/file_in_zip.txt"
