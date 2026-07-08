@@ -82,6 +82,7 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         self.delay_hashing = kwargs.get("delay_hashing", True)
 
         self._override_passed_in_target_json(**kwargs)
+        self._override_passed_in_source_json(**kwargs)
         self.source_json = source_json
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
@@ -142,6 +143,9 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
                 self.logger.error(e)
                 raise
 
+    def _override_passed_in_source_json(self, **kwargs):
+        ...
+
     def setup_archive_hasher(self, archive_file: Path, **kwargs) -> Tuple[Path, ArchiveDirectoryHasher, dict]:
         kwargs.setdefault('unzip_and_hash_contents', True)
         archive_hasher = ArchiveDirectoryHasher(input_path=archive_file, **kwargs)
@@ -150,18 +154,96 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
 
 
 # TODO: ArchiveToArchiveComparer
+# FIXME: this doesnt read the hashes correctly.
+#  It returns a list of just the hashes instead
+#  of dicts of hash=key path=value
+class ArchiveToArchiveComparer(JsonToArchiveComparer):
+    def __init__(self, source_archive_file: Path, target_archive_file: Path, **kwargs):
+        self._source_archive_hash = None
+        self._delay_hashing = None
+        self.logger = self.setup_logger(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
+        self.source_archive_file = source_archive_file
+        self.target_archive_file = target_archive_file
+
+        (self.source_archive_file,
+         self.source_archive_hasher,
+         kwargs) = self.setup_archive_hasher(archive_file=self.source_archive_file, **kwargs)
+        # noinspection PyTypeChecker
+        super().__init__(source_json=self.source_json, archive_file=self.target_archive_file, **kwargs)
+
+    @property
+    def source_archive_hash(self) -> Union[dict, List[dict]]:
+        if self._source_archive_hash is None:
+            self.logger.info(f"Hashing archive file {self.source_archive_file.name}")
+            self._source_archive_hash = self.source_archive_hasher.hash_archive()
+        # noinspection PyTypeChecker
+        return self._source_archive_hash
+
+    @property
+    def source_json(self):
+        if self.delay_hashing:
+            return None
+        return self.source_archive_hash
+
+    @source_json.setter
+    def source_json(self, value):
+        try:
+            raise ValueError(f"source_json cannot be set "
+                             f"when using {self.__class__.__name__}, "
+                             f"value is locked to self.archive_hash")
+        except Exception as e:
+            self.logger.warning(e)
+
+    def _override_passed_in_source_json(self, **kwargs):
+        if 'source_json' in kwargs:
+            try:
+                raise ValueError(f"source_json attribute cannot be "
+                                 f"provided when using {self.__class__.__name__}")
+            except Exception as e:
+                self.logger.error(e)
+                raise
+
+
+class _QuickTest:
+    test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
+    test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
+    test_other_zip = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.zip")
+    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
+
+    def __init__(self, jj=False, ja=False, aa=False, **kwargs):
+        self.hc = None
+        self.jj = jj
+        self.ja = ja
+        self.aa = aa
+
+        self.comparer_to_use = [x for x in [self.jj, self.ja, self.aa] if x]
+
+        if len(self.comparer_to_use) > 1:
+            raise ValueError("Only one hasher can be used at a time")
+
+    def get_hc(self):
+        if self.jj:
+            self.hc = JsonToJsonHashComparer(source_json=self.test_backup_json,
+                                             target_json=self.test_new_json,
+                                             source_name=self.test_new_json.name,
+                                             target_name=self.test_new_json.name)
+        elif self.ja:
+            self.hc = JsonToArchiveComparer(source_json=self.test_backup_json,
+                                            archive_file=self.test_new_zip)
+        elif self.aa:
+            self.hc = ArchiveToArchiveComparer(source_archive_file=self.test_new_zip,
+                                               target_archive_file=self.test_other_zip)
+
+    def compare_test(self):
+        if self.hc:
+            self.hc.compare()
+        else:
+            raise AttributeError("No hasher initialized")
 
 
 if __name__ == '__main__':
-    test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
-    test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
-    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
-    # j2j_hc = JsonToJsonHashComparer(source_json=test_backup_json,
-    #                                 target_json=test_new_json,
-    #                                 source_name=test_new_json.name,
-    #                                 target_name=test_new_json.name)
-
-    j2a_hc = JsonToArchiveComparer(source_json=test_backup_json,
-                                   archive_file=test_new_zip)
-
-    j2a_hc.compare()
+    qt = _QuickTest(aa=True)
+    qt.get_hc()
+    qt.compare_test()

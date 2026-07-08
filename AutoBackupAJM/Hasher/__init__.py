@@ -27,7 +27,7 @@ class _BaseHasher:
         elif isinstance(value, Path):
             self._input_path = value
         else:
-            raise TypeError("input_path must be a string or a Path object")
+            raise TypeError(f"input_path must be a string or a Path object, not {type(value).__name__}")
 
         if not self._input_path.exists():
             raise FileNotFoundError(f"self.input_path ({self._input_path}) must exist")
