@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Union, List, Tuple
 from AutoBackupAJM import SetupLogger
-from AutoBackupAJM.Hasher.other_hashers import ArchiveDirectoryHasher
+from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 
 
 # TODO: Integrate with AutoBackup
