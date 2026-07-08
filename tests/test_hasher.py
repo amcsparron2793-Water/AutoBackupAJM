@@ -1,9 +1,10 @@
+# noinspection PyPackageRequirements
 import pytest
 import hashlib
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.factory import HasherFactory
-from AutoBackupAJM.Hasher.other_hashers import ArchiveFileHasher, ArchiveDirectoryHasher
+from AutoBackupAJM.Hasher.archive_hashers import ArchiveFileHasher, ArchiveDirectoryHasher
 import zipfile
 
 

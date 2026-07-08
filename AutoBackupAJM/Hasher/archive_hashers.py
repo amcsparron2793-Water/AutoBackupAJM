@@ -86,6 +86,6 @@ class ArchiveDirectoryHasher(ArchiveFileHasher, LargeDirectoryHasher):
 
 if __name__ == "__main__":
     # TODO: functional, but needs a way to compare hashes -
-    #  also needs to be integrated with factory and tests
+    #  also needs to be integrated with factory
     AH = ArchiveDirectoryHasher('../../Misc_Project_Files/HostedFeatureStorage.zip')
     archive_hash = AH.hash_archive(unzip_and_hash_contents=True)

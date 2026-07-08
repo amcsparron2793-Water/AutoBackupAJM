@@ -2,9 +2,8 @@
 import pytest
 from pathlib import Path
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch
 from AutoBackupAJM.auto_backup_ajm import AutoBackup
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 def test_init(source_file, temp_dir):
