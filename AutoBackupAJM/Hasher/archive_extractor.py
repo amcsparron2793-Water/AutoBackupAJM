@@ -15,6 +15,7 @@ class ArchiveExtractor:
     TEMP_DIR = Path(gettempdir())
 
     def __init__(self, archive_path: Path, **kwargs):
+        self.preserve_archive = kwargs.get("preserve_archive", True)
         self._extract_dir = None
         self._archive_contents = None
         # noinspection PyTypeChecker
@@ -23,6 +24,19 @@ class ArchiveExtractor:
         self.use_temp_dir = kwargs.get("use_temp_dir", True)
         self.archive_path = archive_path
         self.extract_dir = kwargs.get("extract_dir", None)
+
+    def __del__(self):
+        if not self.preserve_archive:
+            self._cleanup()
+        else:
+            self.logger.debug(f"Preserving extracted archive contents: {self.extract_dir}")
+
+    def _cleanup(self):
+        if self.extract_dir and self.extract_dir.is_dir():
+            self.logger.debug(f"Deleting extracted archive contents: {self.extract_dir}")
+            shutil.rmtree(self.extract_dir)
+        else:
+            self.logger.debug(f"No extracted archive contents to delete: {self.extract_dir}")
 
     def _get_default_extract_dir(self):
         if self.use_temp_dir:

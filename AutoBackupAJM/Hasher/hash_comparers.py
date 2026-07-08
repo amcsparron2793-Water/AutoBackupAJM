@@ -134,6 +134,7 @@ class JsonToArchiveComparer:
 
     def setup_archive_hasher(self, archive_file: Path, **kwargs) -> Tuple[Path, ArchiveDirectoryHasher, dict]:
         kwargs.setdefault('unzip_and_hash_contents', True)
+        kwargs.setdefault('preserve_archive', False)
         archive_hasher = ArchiveDirectoryHasher(input_path=archive_file, **kwargs)
         self.logger.info(f"Archive hasher initialized for {archive_file.name}")
         return archive_file, archive_hasher, kwargs
@@ -207,5 +208,5 @@ class _QuickTest:
 
 if __name__ == '__main__':
     qt = _QuickTest(aa=True)
-    qt.get_hc(unzip_and_hash_contents=False)
+    qt.get_hc()
     qt.compare_test()
