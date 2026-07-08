@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Union, List, Tuple, Optional
 from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
+from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
 
 # TODO: Integrate with AutoBackup
@@ -166,6 +167,29 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer):
         return self._source_archive_hash
 
 
+class JsonToDirectoryComparer:
+    def __init__(self, source_json: Path, target_dir: Path, **kwargs):
+        self._source_dir_hash = None
+        self._delay_hashing = None
+        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
+        self.source_json = source_json
+        self.target_dir = target_dir
+        self.directory_hasher = DirectoryHasher(input_path=self.target_dir, **kwargs)
+        self.directory_hash = self.directory_hasher.hash_and_record_directory(**kwargs)
+
+        self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
+                                                  target_json=self.directory_hash, **kwargs)
+
+        self.delay_hashing = kwargs.get("delay_hashing", True)
+
+    # TODO: make this a part of a base class or something?
+    def compare(self):
+        self.jj_hashcomp.target_json = self.directory_hash
+        return self.jj_hashcomp.compare()
+
+
 class _QuickTest:
     test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
     test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
@@ -207,6 +231,10 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(aa=True)
-    qt.get_hc()
-    qt.compare_test()
+    jd = JsonToDirectoryComparer(source_json=Path("../../Misc_Project_Files/Desktop_backup.json"),
+                                 target_dir=Path("~/Desktop").expanduser())
+    jd.compare()
+
+    # qt = _QuickTest(aa=True)
+    # qt.get_hc()
+    # qt.compare_test()
