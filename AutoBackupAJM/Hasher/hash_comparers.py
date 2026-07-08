@@ -1,4 +1,5 @@
 import json
+from abc import abstractmethod, ABCMeta
 from pathlib import Path
 from typing import Union, List, Tuple, Optional
 from AutoBackupAJM import SetupLogger
@@ -6,19 +7,19 @@ from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
 
-# TODO: Integrate with AutoBackup
-class JsonToJsonHashComparer:
-    def __init__(self, source_json: Optional[Union[list, dict, Path]],
-                 target_json: Optional[Union[list, dict, Path]], **kwargs):
-        self._source_json = None
-        self._target_json = None
-
-        self.source_name = kwargs.get("source_name", "source_json")
-        self.target_name = kwargs.get("target_name", "target_json")
-
+class _BaseHashComparer(metaclass=ABCMeta):
+    def __init__(self, **kwargs):
         self.logger = self.setup_logger(**kwargs)
-        self.source_json = source_json
-        self.target_json = target_json
+
+    @abstractmethod
+    def source_target_contents_match(self):
+        ...
+
+    def compare(self):
+        if not self.source_target_contents_match():
+            return False
+        self.logger.info("All keys found in both JSON files.")
+        return True
 
     @classmethod
     def setup_logger(cls, **kwargs):
@@ -26,6 +27,24 @@ class JsonToJsonHashComparer:
         logger.name = cls.__name__
         logger.info(f"Initializing {cls.__name__}")
         return logger
+
+
+# TODO: Integrate with AutoBackup
+class JsonToJsonHashComparer(_BaseHashComparer):
+    def __init__(self, source_json: Optional[Union[list, dict, Path]],
+                 target_json: Optional[Union[list, dict, Path]],
+                 **kwargs):
+        super().__init__(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
+        self._source_json = None
+        self._target_json = None
+
+        self.source_name = kwargs.get("source_name", "source_json")
+        self.target_name = kwargs.get("target_name", "target_json")
+
+        self.source_json = source_json
+        self.target_json = target_json
 
     def _get_json(self, value: Union[Path, list, dict], **kwargs):
         if value:
@@ -81,22 +100,14 @@ class JsonToJsonHashComparer:
     def source_target_contents_match(self):
         return self._all_source_in_target() and self._all_target_in_source()
 
-    def compare(self):
-        if not self.source_json or not self.target_json:
-            raise ValueError("source_json and target_json cannot be None")
 
-        if not self.source_target_contents_match():
-            return False
-        self.logger.info("All keys found in both JSON files.")
-        return True
-
-
-class JsonToArchiveComparer:
+class JsonToArchiveComparer(_BaseHashComparer):
     def __init__(self, archive_file: Path, source_json: Union[Path, List[dict], dict], **kwargs):
+        super().__init__(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
         self._archive_hash = None
         self._delay_hashing = None
-        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
-        kwargs.setdefault('logger', self.logger)
 
         self.source_json = source_json
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
@@ -107,6 +118,9 @@ class JsonToArchiveComparer:
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         kwargs.setdefault('target_name', self.archive_file.name)
+
+    def source_target_contents_match(self):
+        return self.jj_hashcomp.source_target_contents_match()
 
     @property
     def delay_hashing(self):
@@ -141,11 +155,12 @@ class JsonToArchiveComparer:
         return archive_file, archive_hasher, kwargs
 
 
-class ArchiveToArchiveComparer(JsonToArchiveComparer):
+class ArchiveToArchiveComparer(JsonToArchiveComparer, _BaseHashComparer):
     def __init__(self, source_archive_file: Path, target_archive_file: Path, **kwargs):
         self._source_archive_hash = None
         self._delay_hashing = None
-        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
+
+        _BaseHashComparer.__init__(self, **kwargs)
         kwargs.setdefault('logger', self.logger)
 
         self.source_archive_file = source_archive_file
@@ -167,16 +182,18 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer):
         return self._source_archive_hash
 
 
-class JsonToDirectoryComparer:
+class JsonToDirectoryComparer(_BaseHashComparer):
     def __init__(self, source_json: Path, target_dir: Path, **kwargs):
+        super().__init__(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
         self._source_dir_hash = None
         self._delay_hashing = None
-        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
-        kwargs.setdefault('logger', self.logger)
 
         self.source_json = source_json
         self.target_dir = target_dir
         self.directory_hasher = DirectoryHasher(input_path=self.target_dir, **kwargs)
+        # TODO: make this lazy?
         self.directory_hash = self.directory_hasher.hash_and_record_directory(**kwargs)
 
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
@@ -184,7 +201,9 @@ class JsonToDirectoryComparer:
 
         self.delay_hashing = kwargs.get("delay_hashing", True)
 
-    # TODO: make this a part of a base class or something?
+    def source_target_contents_match(self):
+        return self.jj_hashcomp.source_target_contents_match()
+
     def compare(self):
         self.jj_hashcomp.target_json = self.directory_hash
         return self.jj_hashcomp.compare()
