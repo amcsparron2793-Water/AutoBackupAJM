@@ -153,7 +153,6 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         return archive_file, archive_hasher, kwargs
 
 
-# TODO: ArchiveToArchiveComparer
 class ArchiveToArchiveComparer(JsonToArchiveComparer):
     def __init__(self, source_archive_file: Path, target_archive_file: Path, **kwargs):
         self._source_archive_hash = None
