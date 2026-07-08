@@ -1,14 +1,14 @@
 import json
 from pathlib import Path
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 
 
 # TODO: Integrate with AutoBackup
 class JsonToJsonHashComparer:
-    def __init__(self, source_json: Union[list, dict, Path],
-                 target_json: Union[list, dict, Path], **kwargs):
+    def __init__(self, source_json: Optional[Union[list, dict, Path]],
+                 target_json: Optional[Union[list, dict, Path]], **kwargs):
         self._source_json = None
         self._target_json = None
 
@@ -27,13 +27,14 @@ class JsonToJsonHashComparer:
         return logger
 
     def _get_json(self, value: Union[Path, list, dict], **kwargs):
-        if isinstance(value, Path):
-            value = self._load_json(value, **kwargs)
-        elif isinstance(value, (list, dict)):
-            # just pass it through
-            pass
-        else:
-            raise TypeError("value must be a Path or a list or a dict")
+        if value:
+            if isinstance(value, Path):
+                value = self._load_json(value, **kwargs)
+            elif isinstance(value, (list, dict)):
+                # just pass it through
+                pass
+            else:
+                raise TypeError(f"value must be a Path, list or dict, not {type(value).__name__}")
         return value
 
     @staticmethod
@@ -62,35 +63,49 @@ class JsonToJsonHashComparer:
     def source_json(self, value):
         self._source_json = self._get_json(value)
 
-    def compare(self):
+    def _all_source_in_target(self):
         for key, value in self.source_json.items():
             if key not in self.target_json:
                 self.logger.error(f"Key {key} not found in {self.target_name}")
                 return False
+        return True
+
+    def _all_target_in_source(self):
+        for key, value in self.target_json.items():
+            if key not in self.source_json:
+                self.logger.error(f"Key {key} not found in {self.source_name}")
+                return False
+        return True
+
+    def source_target_contents_match(self):
+        return self._all_source_in_target() and self._all_target_in_source()
+
+    def compare(self):
+        if not self.source_json or not self.target_json:
+            raise ValueError("source_json and target_json cannot be None")
+
+        if not self.source_target_contents_match():
+            return False
         self.logger.info("All keys found in both JSON files.")
         return True
 
 
-class JsonToArchiveComparer(JsonToJsonHashComparer):
+class JsonToArchiveComparer:
     def __init__(self, archive_file: Path, source_json: Union[Path, List[dict], dict], **kwargs):
         self._archive_hash = None
         self._delay_hashing = None
-
-        self.logger = self.setup_logger(**kwargs)
+        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
         kwargs.setdefault('logger', self.logger)
 
-        self.delay_hashing = kwargs.get("delay_hashing", True)
-
-        self._override_passed_in_target_json(**kwargs)
-        self._override_passed_in_source_json(**kwargs)
         self.source_json = source_json
+        self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
+                                                  target_json=None, **kwargs)
+
+        self.delay_hashing = kwargs.get("delay_hashing", True)
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         kwargs.setdefault('target_name', self.archive_file.name)
-        kwargs.setdefault('target_json', None)
-        kwargs['source_json'] = self.source_json
-        super().__init__(**kwargs)
 
     @property
     def delay_hashing(self):
@@ -105,26 +120,9 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
         else:
             self.logger.debug(f"delay_hashing is set to {self._delay_hashing}")
 
-    @property
-    def target_json(self):
-        if self.delay_hashing:
-            return None
-        return self.archive_hash
-
-    @target_json.setter
-    def target_json(self, value):
-        try:
-            raise ValueError("target_json cannot be set "
-                             "when using JsonToArchiveComparer, "
-                             "value is locked to self.archive_hash")
-        except Exception as e:
-            self.logger.warning(e)
-
     def compare(self):
-        if self.delay_hashing:
-            self.logger.warning("since delay_hashing is True, hashing archive now.")
-            self.delay_hashing = False
-        return super().compare()
+        self.jj_hashcomp.target_json = self.archive_hash
+        return self.jj_hashcomp.compare()
 
     @property
     def archive_hash(self) -> Union[dict, List[dict]]:
@@ -133,18 +131,6 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
             self._archive_hash = self.archive_hasher.hash_archive()
         # noinspection PyTypeChecker
         return self._archive_hash
-
-    def _override_passed_in_target_json(self, **kwargs):
-        if 'target_json' in kwargs:
-            try:
-                raise ValueError("target_json attribute cannot be "
-                                 "provided when using JsonToArchiveComparer")
-            except Exception as e:
-                self.logger.error(e)
-                raise
-
-    def _override_passed_in_source_json(self, **kwargs):
-        ...
 
     def setup_archive_hasher(self, archive_file: Path, **kwargs) -> Tuple[Path, ArchiveDirectoryHasher, dict]:
         kwargs.setdefault('unzip_and_hash_contents', True)
@@ -157,7 +143,7 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer):
     def __init__(self, source_archive_file: Path, target_archive_file: Path, **kwargs):
         self._source_archive_hash = None
         self._delay_hashing = None
-        self.logger = self.setup_logger(**kwargs)
+        self.logger = JsonToJsonHashComparer.setup_logger(**kwargs)
         kwargs.setdefault('logger', self.logger)
 
         self.source_archive_file = source_archive_file
@@ -167,7 +153,8 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer):
          self.source_archive_hasher,
          kwargs) = self.setup_archive_hasher(archive_file=self.source_archive_file, **kwargs)
         # noinspection PyTypeChecker
-        super().__init__(source_json=self.source_json, archive_file=self.target_archive_file, **kwargs)
+        super().__init__(source_json=self.source_archive_hash,
+                         archive_file=self.target_archive_file, **kwargs)
 
     @property
     def source_archive_hash(self) -> Union[dict, List[dict]]:
@@ -176,30 +163,6 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer):
             self._source_archive_hash = self.source_archive_hasher.hash_archive()
         # noinspection PyTypeChecker
         return self._source_archive_hash
-
-    @property
-    def source_json(self):
-        if self.delay_hashing:
-            return None
-        return self.source_archive_hash
-
-    @source_json.setter
-    def source_json(self, value):
-        try:
-            raise ValueError(f"source_json cannot be set "
-                             f"when using {self.__class__.__name__}, "
-                             f"value is locked to self.archive_hash")
-        except Exception as e:
-            self.logger.warning(e)
-
-    def _override_passed_in_source_json(self, **kwargs):
-        if 'source_json' in kwargs:
-            try:
-                raise ValueError(f"source_json attribute cannot be "
-                                 f"provided when using {self.__class__.__name__}")
-            except Exception as e:
-                self.logger.error(e)
-                raise
 
 
 class _QuickTest:
@@ -219,18 +182,21 @@ class _QuickTest:
         if len(self.comparer_to_use) > 1:
             raise ValueError("Only one hasher can be used at a time")
 
-    def get_hc(self):
+    def get_hc(self, **kwargs):
         if self.jj:
             self.hc = JsonToJsonHashComparer(source_json=self.test_backup_json,
                                              target_json=self.test_new_json,
                                              source_name=self.test_new_json.name,
-                                             target_name=self.test_new_json.name)
+                                             target_name=self.test_new_json.name,
+                                             **kwargs)
         elif self.ja:
             self.hc = JsonToArchiveComparer(source_json=self.test_backup_json,
-                                            archive_file=self.test_new_zip)
+                                            archive_file=self.test_new_zip,
+                                            **kwargs)
         elif self.aa:
             self.hc = ArchiveToArchiveComparer(source_archive_file=self.test_new_zip,
-                                               target_archive_file=self.test_other_zip)
+                                               target_archive_file=self.test_other_zip,
+                                               **kwargs)
 
     def compare_test(self):
         if self.hc:
@@ -241,5 +207,5 @@ class _QuickTest:
 
 if __name__ == '__main__':
     qt = _QuickTest(aa=True)
-    qt.get_hc()
+    qt.get_hc(unzip_and_hash_contents=False)
     qt.compare_test()

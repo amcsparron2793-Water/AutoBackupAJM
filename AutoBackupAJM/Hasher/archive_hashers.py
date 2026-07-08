@@ -72,7 +72,8 @@ class ArchiveFileHasher(LargeFileHasher):
             return self._unzip_and_hash(**kwargs)
         else:
             # hash as one file
-            return [x for x in self.hash_file(self.input_path, **kwargs)]
+            file_path, file_hash = self.hash_file(self.input_path, **kwargs)
+            return {file_hash: file_path}
         # raise NotImplementedError("hash_archive is not yet implemented")
 
 
