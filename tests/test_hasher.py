@@ -162,12 +162,9 @@ class TestArchiveFileHasher:
     def test_hash_archive_as_file(self, zip_archive):
         hasher = ArchiveFileHasher(zip_archive)
         results = hasher.hash_archive(unzip_and_hash_contents=False)
-        assert isinstance(results, list)
-        # hash_archive returns [hash_file()] which for ArchiveFileHasher (LargeFileHasher)
-        # returns (path, hash)
-        returned_path, h = results
-        assert returned_path == zip_archive.resolve()
-        assert h == hashlib.md5(zip_archive.read_bytes()).hexdigest()
+        assert isinstance(results, dict)
+        assert list(results.values())[0] == zip_archive.resolve()
+        assert list(results.keys())[0] == hashlib.md5(zip_archive.read_bytes()).hexdigest()
 
     def test_hash_archive_unzip_single_file(self, zip_archive, tmp_path):
         extract_dir = tmp_path / "manual_extract"

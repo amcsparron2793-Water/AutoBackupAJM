@@ -34,7 +34,7 @@ class JsonToJsonHashComparer:
                 # just pass it through
                 pass
             else:
-                raise TypeError(f"value must be a Path, list or dict, not {type(value).__name__}")
+                raise TypeError(f"value must be a Path or a list or a dict, not {type(value).__name__}")
         return value
 
     @staticmethod
