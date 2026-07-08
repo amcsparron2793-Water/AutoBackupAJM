@@ -5,6 +5,7 @@ from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher.other_hashers import ArchiveDirectoryHasher
 
 
+# TODO: Integrate with AutoBackup
 class JsonToJsonHashComparer:
     def __init__(self, source_json: Union[list, dict, Path],
                  target_json: Union[list, dict, Path], **kwargs):
