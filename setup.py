@@ -23,7 +23,7 @@ def get_property(prop, project):
 setup(
     name=project_name,
     version=get_property('__version__', project_name),
-    packages=['AutoBackupAJM'],
+    packages=['AutoBackupAJM', 'AutoBackupAJM.Hasher'],
     url='https://github.com/amcsparron2793-Water/AutoBackupAJM',
     download_url=f'https://github.com/amcsparron2793-Water/AutoBackupAJM/archive/refs/tags/{get_property("__version__", project_name)}.tar.gz',
     keywords=[],
