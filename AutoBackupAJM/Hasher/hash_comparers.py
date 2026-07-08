@@ -71,32 +71,58 @@ class JsonToJsonHashComparer:
 
 
 class JsonToArchiveComparer(JsonToJsonHashComparer):
-    def __init__(self, archive_file: Path, **kwargs):
+    def __init__(self, archive_file: Path, source_json: Union[Path, List[dict], dict], **kwargs):
         self._archive_hash = None
-        self.logger = self.setup_logger(**kwargs)
+        self._delay_hashing = None
 
+        self.logger = self.setup_logger(**kwargs)
         kwargs.setdefault('logger', self.logger)
 
+        self.delay_hashing = kwargs.get("delay_hashing", True)
+
         self._override_passed_in_target_json(**kwargs)
+        self.source_json = source_json
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         kwargs.setdefault('target_name', self.archive_file.name)
         kwargs.setdefault('target_json', None)
+        kwargs['source_json'] = self.source_json
         super().__init__(**kwargs)
 
     @property
+    def delay_hashing(self):
+        return self._delay_hashing
+
+    @delay_hashing.setter
+    def delay_hashing(self, value):
+        self._delay_hashing = value
+        if self._delay_hashing:
+            self.logger.warning("delay_hashing is set to True, "
+                                "archive will not be hashed until compare() is called.")
+        else:
+            self.logger.debug(f"delay_hashing is set to {self._delay_hashing}")
+
+    @property
     def target_json(self):
+        if self.delay_hashing:
+            return None
         return self.archive_hash
 
     @target_json.setter
     def target_json(self, value):
         try:
-            raise ValueError("target_json cannot be set"
+            raise ValueError("target_json cannot be set "
                              "when using JsonToArchiveComparer, "
                              "value is locked to self.archive_hash")
         except Exception as e:
             self.logger.warning(e)
+
+    def compare(self):
+        if self.delay_hashing:
+            self.logger.warning("since delay_hashing is True, hashing archive now.")
+            self.delay_hashing = False
+        return super().compare()
 
     @property
     def archive_hash(self) -> Union[dict, List[dict]]:
@@ -127,13 +153,14 @@ class JsonToArchiveComparer(JsonToJsonHashComparer):
 
 if __name__ == '__main__':
     test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
-    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
+    test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
+    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
     # j2j_hc = JsonToJsonHashComparer(source_json=test_backup_json,
     #                                 target_json=test_new_json,
     #                                 source_name=test_new_json.name,
     #                                 target_name=test_new_json.name)
 
     j2a_hc = JsonToArchiveComparer(source_json=test_backup_json,
-                                   archive_file=test_new_json)
+                                   archive_file=test_new_zip)
 
     j2a_hc.compare()
