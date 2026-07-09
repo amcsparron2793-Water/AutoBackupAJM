@@ -14,6 +14,7 @@ class _BaseHashComparer(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         self._source_name = None
         self._target_name = None
+        self._delay_hashing = None
         self.logger = self.setup_logger(**kwargs)
         self.source_name = kwargs.get("source_name", self.__class__.DEFAULT_SOURCE_NAME)
         self.target_name = kwargs.get("target_name", self.__class__.DEFAULT_TARGET_NAME)
@@ -47,13 +48,26 @@ class _BaseHashComparer(metaclass=ABCMeta):
         self._target_name = value
         self._set_name_for_jj(value, "target_name")
 
+    @property
+    def delay_hashing(self):
+        return self._delay_hashing
+
+    @delay_hashing.setter
+    def delay_hashing(self, value):
+        self._delay_hashing = value
+        if self._delay_hashing:
+            self.logger.warning("delay_hashing is set to True, "
+                                "archive will not be hashed until compare() is called.")
+        else:
+            self.logger.debug(f"delay_hashing is set to {self._delay_hashing}")
+
     def _set_name_for_jj(self, value, name_attr_to_set):
         if hasattr(self, 'jj_hashcomp'):
             self.logger.debug(f"Setting {name_attr_to_set} to {value} for {self.__class__.__name__}")
             setattr(self.jj_hashcomp, name_attr_to_set, value)
             return
         elif isinstance(self, JsonToJsonHashComparer):
-            self.logger.error(f"setting {name_attr_to_set} to {value} for {self.__class__.__name__}")
+            self.logger.debug(f"setting {name_attr_to_set} to {value} for {self.__class__.__name__}")
             self.__setattr__(f"_{name_attr_to_set}", value)
             return
         self.logger.debug(f"No jj_hashcomp attribute found for {self.__class__.__name__}")
@@ -170,36 +184,24 @@ class JsonToArchiveComparer(_BaseHashComparer):
         kwargs.setdefault('logger', self.logger)
 
         self._archive_hash = None
-        self._delay_hashing = None
 
         self.source_json = source_json
-        self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
-                                                  target_json=None, **kwargs)
-
         self.delay_hashing = kwargs.get("delay_hashing", True)
-
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
+
+        self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
+                                                  target_json=None if self.delay_hashing else self.archive_hash,
+                                                  **kwargs)
 
         self.target_name = self.archive_file.name
 
     def source_target_contents_match(self):
         return self.jj_hashcomp.source_target_contents_match()
 
-    @property
-    def delay_hashing(self):
-        return self._delay_hashing
-
-    @delay_hashing.setter
-    def delay_hashing(self, value):
-        self._delay_hashing = value
-        if self._delay_hashing:
-            self.logger.warning("delay_hashing is set to True, "
-                                "archive will not be hashed until compare() is called.")
-        else:
-            self.logger.debug(f"delay_hashing is set to {self._delay_hashing}")
-
     def compare(self):
-        self.jj_hashcomp.target_json = self.archive_hash
+        if self.delay_hashing or self.archive_hash is None:
+            self.jj_hashcomp.target_json = self.archive_hash
+            self.delay_hashing = False
         return self.jj_hashcomp.compare()
 
     @property
@@ -233,8 +235,8 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer, _BaseHashComparer):
          self.source_archive_hasher,
          kwargs) = self.setup_archive_hasher(archive_file=self.source_archive_file, **kwargs)
         # noinspection PyTypeChecker
-        super().__init__(source_json=self.source_archive_hash,
-                         archive_file=self.target_archive_file, **kwargs),
+        super().__init__(source_json=None if self.delay_hashing else self.source_archive_hash,
+                         archive_file=self.target_archive_file, **kwargs)
 
         self.source_name = kwargs.get("source_name", self.source_archive_file.name)
         self.target_name = kwargs.get("target_name", self.target_archive_file.name)
@@ -246,6 +248,12 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer, _BaseHashComparer):
             self._source_archive_hash = self.source_archive_hasher.hash_archive()
         # noinspection PyTypeChecker
         return self._source_archive_hash
+
+    def compare(self):
+        if self.delay_hashing or self.source_archive_hash is None:
+            self.jj_hashcomp.source_json = self.source_archive_hash
+            self.delay_hashing = False
+        return super().compare()
 
 
 class JsonToDirectoryComparer(_BaseHashComparer):
@@ -262,9 +270,8 @@ class JsonToDirectoryComparer(_BaseHashComparer):
         self.delay_hashing = kwargs.get("delay_hashing", True)
 
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
-                                                  target_json=None, **kwargs)
-        if not self.delay_hashing:
-            self.jj_hashcomp.target_json = self.directory_hash
+                                                  target_json=None if self.delay_hashing else self.directory_hash,
+                                                  **kwargs)
 
         self.source_name = self.source_json.name
         self.target_name = self.target_dir.name
@@ -281,6 +288,7 @@ class JsonToDirectoryComparer(_BaseHashComparer):
     def compare(self):
         if self.delay_hashing or self.directory_hash is None:
             self.jj_hashcomp.target_json = self.directory_hash
+            self.delay_hashing = False
         return self.jj_hashcomp.compare()
 
 
@@ -333,6 +341,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(jj=True)
+    qt = _QuickTest(jd=True)
     qt.get_hc()
     qt.compare_test()
