@@ -8,12 +8,15 @@ from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
 
 class _BaseHashComparer(metaclass=ABCMeta):
+    DEFAULT_SOURCE_NAME = "source_file"
+    DEFAULT_TARGET_NAME = "target_file"
+
     def __init__(self, **kwargs):
         self._source_name = None
         self._target_name = None
         self.logger = self.setup_logger(**kwargs)
-        self.source_name = kwargs.get("source_name", "source_file")
-        self.target_name = kwargs.get("target_name", "target_file")
+        self.source_name = kwargs.get("source_name", self.__class__.DEFAULT_SOURCE_NAME)
+        self.target_name = kwargs.get("target_name", self.__class__.DEFAULT_TARGET_NAME)
 
     @abstractmethod
     def source_target_contents_match(self):
@@ -46,10 +49,12 @@ class _BaseHashComparer(metaclass=ABCMeta):
 
     def _set_name_for_jj(self, value, name_attr_to_set):
         if hasattr(self, 'jj_hashcomp'):
-            self.logger.debug(
-                f"Setting {name_attr_to_set} to {value} for {self.__class__.__name__} "
-            )
+            self.logger.debug(f"Setting {name_attr_to_set} to {value} for {self.__class__.__name__}")
             setattr(self.jj_hashcomp, name_attr_to_set, value)
+            return
+        elif isinstance(self, JsonToJsonHashComparer):
+            self.logger.error(f"setting {name_attr_to_set} to {value} for {self.__class__.__name__}")
+            self.__setattr__(f"_{name_attr_to_set}", value)
             return
         self.logger.debug(f"No jj_hashcomp attribute found for {self.__class__.__name__}")
 
@@ -304,8 +309,8 @@ class _QuickTest:
         if self.jj:
             self.hc = JsonToJsonHashComparer(source_json=self.test_backup_json,
                                              target_json=self.test_new_json,
-                                             source_name=self.test_new_json.name,
-                                             target_name=self.test_new_json.name,
+                                             # FIXME: setting source name like this doesnt seem to work?
+                                             # source_name="totally_not_the_real_name",
                                              **kwargs)
         elif self.ja:
             self.hc = JsonToArchiveComparer(source_json=self.test_backup_json,
