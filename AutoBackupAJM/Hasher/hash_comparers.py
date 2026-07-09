@@ -15,6 +15,7 @@ class _BaseHashComparer(metaclass=ABCMeta):
         self._source_name = None
         self._target_name = None
         self._delay_hashing = None
+        self.stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", False)
         self.logger = self.setup_logger(**kwargs)
         self.source_name = kwargs.get("source_name", self.__class__.DEFAULT_SOURCE_NAME)
         self.target_name = kwargs.get("target_name", self.__class__.DEFAULT_TARGET_NAME)
@@ -82,11 +83,18 @@ class _BaseHashComparer(metaclass=ABCMeta):
             raise TypeError(f"value must be a string or a Path object, not {type(value).__name__}")
 
     def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
+        stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", self.stop_on_first_mismatch)
+        found_mismatch = False
         for key, value in x.items():
             if key not in y.keys():
                 self.logger.error(f"Key {key} not found in {y_name}")
-                return False
-        return True
+
+                found_mismatch = True
+                if stop_on_first_mismatch:
+                    return False
+                else:
+                    continue
+        return not found_mismatch
 
     def compare(self):
         if not self.source_target_contents_match():
@@ -186,7 +194,6 @@ class JsonToArchiveComparer(_BaseHashComparer):
         self._archive_hash = None
 
         self.source_json = source_json
-        self.delay_hashing = kwargs.get("delay_hashing", True)
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
@@ -199,7 +206,7 @@ class JsonToArchiveComparer(_BaseHashComparer):
         return self.jj_hashcomp.source_target_contents_match()
 
     def compare(self):
-        if self.delay_hashing or self.archive_hash is None:
+        if self.delay_hashing or self.archive_hash is None or self.jj_hashcomp.target_json is None:
             self.jj_hashcomp.target_json = self.archive_hash
             self.delay_hashing = False
         return self.jj_hashcomp.compare()
@@ -266,8 +273,6 @@ class JsonToDirectoryComparer(_BaseHashComparer):
         self.source_json = source_json
         self.target_dir = target_dir
         self.directory_hasher = DirectoryHasher(input_path=self.target_dir, **kwargs)
-
-        self.delay_hashing = kwargs.get("delay_hashing", True)
 
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
                                                   target_json=None if self.delay_hashing else self.directory_hash,
