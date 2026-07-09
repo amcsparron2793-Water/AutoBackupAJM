@@ -214,14 +214,17 @@ class _QuickTest:
     test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
     test_other_zip = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.zip")
     test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.json")
+    test_dir_json = Path("../../Misc_Project_Files/Desktop_backup.json")
+    test_target_dir = Path("~/Desktop").expanduser()
 
-    def __init__(self, jj=False, ja=False, aa=False, **kwargs):
+    def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
         self.hc = None
         self.jj = jj
         self.ja = ja
         self.aa = aa
+        self.jd = jd
 
-        self.comparer_to_use = [x for x in [self.jj, self.ja, self.aa] if x]
+        self.comparer_to_use = [x for x in [self.jj, self.ja, self.aa, self.jd] if x]
 
         if len(self.comparer_to_use) > 1:
             raise ValueError("Only one hasher can be used at a time")
@@ -241,6 +244,10 @@ class _QuickTest:
             self.hc = ArchiveToArchiveComparer(source_archive_file=self.test_new_zip,
                                                target_archive_file=self.test_other_zip,
                                                **kwargs)
+        elif self.jd:
+            self.hc = JsonToDirectoryComparer(source_json=self.test_dir_json,
+                                              target_dir=self.test_target_dir,
+                                              **kwargs)
 
     def compare_test(self):
         if self.hc:
@@ -250,10 +257,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    jd = JsonToDirectoryComparer(source_json=Path("../../Misc_Project_Files/Desktop_backup.json"),
-                                 target_dir=Path("~/Desktop").expanduser())
-    jd.compare()
-
-    # qt = _QuickTest(aa=True)
-    # qt.get_hc()
-    # qt.compare_test()
+    qt = _QuickTest(jd=True)
+    qt.get_hc()
+    qt.compare_test()
