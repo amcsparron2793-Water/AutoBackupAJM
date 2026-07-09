@@ -15,7 +15,12 @@ class _BaseHashComparer(metaclass=ABCMeta):
         self._source_name = None
         self._target_name = None
         self._delay_hashing = None
+
+        self.mismatch_dict = {}
+
         self.stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", False)
+        self.write_mismatches_to_file = kwargs.get("write_mismatches_to_file", True)
+
         self.logger = self.setup_logger(**kwargs)
         self.source_name = kwargs.get("source_name", self.__class__.DEFAULT_SOURCE_NAME)
         self.target_name = kwargs.get("target_name", self.__class__.DEFAULT_TARGET_NAME)
@@ -82,18 +87,32 @@ class _BaseHashComparer(metaclass=ABCMeta):
         else:
             raise TypeError(f"value must be a string or a Path object, not {type(value).__name__}")
 
+    def _write_mismatches(self):
+        # TODO: needs better file name and error handling
+        if self.write_mismatches_to_file:
+            with open("mismatches.json", "w") as f:
+                json.dump(self.mismatch_dict, f, indent=4)
+            self.logger.info("Mismatches written to mismatches.json")
+
     def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
         stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", self.stop_on_first_mismatch)
+        write_mismatches_to_file = kwargs.get("write_mismatches_to_file", self.write_mismatches_to_file)
         found_mismatch = False
+
         for key, value in x.items():
             if key not in y.keys():
+                # TODO: make this its own function?
                 self.logger.error(f"Key {key} not found in {y_name}")
-
+                self.mismatch_dict[key] = {"source": self.source_name,
+                                           "target": self.target_name,
+                                           "value": value}
                 found_mismatch = True
                 if stop_on_first_mismatch:
                     return False
                 else:
                     continue
+        if write_mismatches_to_file:
+            self._write_mismatches()
         return not found_mismatch
 
     def compare(self):
