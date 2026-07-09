@@ -94,6 +94,14 @@ class _BaseHashComparer(metaclass=ABCMeta):
                 json.dump(self.mismatch_dict, f, indent=4)
             self.logger.info("Mismatches written to mismatches.json")
 
+    def _log_mismatch(self, key: str, value: str, y_name: str):
+        self.logger.error(f"Key {key} not found in {y_name}")
+        self.mismatch_dict[key] = {"source": self.source_name,
+                                   "target": self.target_name,
+                                   "value": value}
+        found_mismatch = True
+        return found_mismatch
+
     def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
         stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", self.stop_on_first_mismatch)
         write_mismatches_to_file = kwargs.get("write_mismatches_to_file", self.write_mismatches_to_file)
@@ -101,16 +109,13 @@ class _BaseHashComparer(metaclass=ABCMeta):
 
         for key, value in x.items():
             if key not in y.keys():
-                # TODO: make this its own function?
-                self.logger.error(f"Key {key} not found in {y_name}")
-                self.mismatch_dict[key] = {"source": self.source_name,
-                                           "target": self.target_name,
-                                           "value": value}
-                found_mismatch = True
+                found_mismatch = self._log_mismatch(key, value, y_name=y_name)
+
                 if stop_on_first_mismatch:
                     return False
                 else:
                     continue
+
         if write_mismatches_to_file:
             self._write_mismatches()
         return not found_mismatch
