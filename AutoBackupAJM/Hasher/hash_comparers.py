@@ -73,6 +73,8 @@ class JsonToJsonHashComparer(_BaseHashComparer):
 
     @target_json.setter
     def target_json(self, value):
+        if isinstance(value, Path):
+            self.target_name = value.name
         self._target_json = self._get_json(value)
 
     @property
@@ -81,21 +83,26 @@ class JsonToJsonHashComparer(_BaseHashComparer):
 
     @source_json.setter
     def source_json(self, value):
+        if isinstance(value, Path):
+            self.source_name = value.name
         self._source_json = self._get_json(value)
 
-    def _all_source_in_target(self):
-        for key, value in self.source_json.items():
-            if key not in self.target_json:
-                self.logger.error(f"Key {key} not found in {self.target_name}")
+    def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
+        for key, value in x.items():
+            if key not in y.keys():
+                self.logger.error(f"Key {key} not found in {y_name}")
                 return False
         return True
 
+    def _all_source_in_target(self):
+        return self._all_x_keys_in_y_keys(x=self.source_json,
+                                          y=self.target_json,
+                                          y_name=self.target_name)
+
     def _all_target_in_source(self):
-        for key, value in self.target_json.items():
-            if key not in self.source_json:
-                self.logger.error(f"Key {key} not found in {self.source_name}")
-                return False
-        return True
+        return self._all_x_keys_in_y_keys(x=self.target_json,
+                                          y=self.source_json,
+                                          y_name=self.source_name)
 
     def source_target_contents_match(self):
         return self._all_source_in_target() and self._all_target_in_source()
@@ -117,7 +124,9 @@ class JsonToArchiveComparer(_BaseHashComparer):
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
-        kwargs.setdefault('target_name', self.archive_file.name)
+        self.jj_hashcomp.target_name = self.archive_file.name
+
+        #kwargs.setdefault('target_name', self.archive_file.name)
 
     def source_target_contents_match(self):
         return self.jj_hashcomp.source_target_contents_match()
@@ -172,6 +181,8 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer, _BaseHashComparer):
         # noinspection PyTypeChecker
         super().__init__(source_json=self.source_archive_hash,
                          archive_file=self.target_archive_file, **kwargs)
+        self.jj_hashcomp.source_name = kwargs.get("source_name", self.source_archive_file.name)
+        self.jj_hashcomp.target_name = kwargs.get("target_name", self.target_archive_file.name)
 
     @property
     def source_archive_hash(self) -> Union[dict, List[dict]]:
@@ -193,13 +204,17 @@ class JsonToDirectoryComparer(_BaseHashComparer):
         self.source_json = source_json
         self.target_dir = target_dir
         self.directory_hasher = DirectoryHasher(input_path=self.target_dir, **kwargs)
+
+        self.delay_hashing = kwargs.get("delay_hashing", True)
+
+
         # TODO: make this lazy?
         self.directory_hash = self.directory_hasher.hash_and_record_directory(**kwargs)
 
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
                                                   target_json=self.directory_hash, **kwargs)
-
-        self.delay_hashing = kwargs.get("delay_hashing", True)
+        self.jj_hashcomp.source_name = self.source_json.name
+        self.jj_hashcomp.target_name = self.target_dir.name
 
     def source_target_contents_match(self):
         return self.jj_hashcomp.source_target_contents_match()
@@ -257,6 +272,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(jd=True)
+    qt = _QuickTest(ja=True)
     qt.get_hc()
     qt.compare_test()
