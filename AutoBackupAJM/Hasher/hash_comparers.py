@@ -89,10 +89,9 @@ class _BaseHashComparer(metaclass=ABCMeta):
 
     def _write_mismatches(self):
         # TODO: needs better file name and error handling
-        if self.write_mismatches_to_file:
-            with open("mismatches.json", "w") as f:
-                json.dump(self.mismatch_dict, f, indent=4)
-            self.logger.info("Mismatches written to mismatches.json")
+        with open("mismatches.json", "w") as f:
+            json.dump(self.mismatch_dict, f, indent=4)
+        self.logger.info("Mismatches written to mismatches.json")
 
     def _log_mismatch(self, key: str, value: str, y_name: str):
         self.logger.error(f"Key {key} not found in {y_name}")
