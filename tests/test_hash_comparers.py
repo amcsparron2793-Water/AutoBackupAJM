@@ -32,7 +32,8 @@ class TestJsonToJsonHashComparer:
         invalid_file = tmp_path / "test.txt"
         invalid_file.write_text("{}")
         with pytest.raises(ValueError, match="is not a JSON file"):
-            JsonToJsonHashComparer._load_json(invalid_file)
+            jj = JsonToJsonHashComparer(source_json={}, target_json={})
+            jj._load_json(path_to_json=invalid_file)
 
     def test_compare_success(self):
         source = {"key1": "val1", "key2": "val2"}

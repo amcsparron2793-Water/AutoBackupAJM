@@ -9,17 +9,15 @@ from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
 class _BaseHashComparer(metaclass=ABCMeta):
     def __init__(self, **kwargs):
+        self._source_name = None
+        self._target_name = None
         self.logger = self.setup_logger(**kwargs)
+        self.source_name = kwargs.get("source_name", "source_file")
+        self.target_name = kwargs.get("target_name", "target_file")
 
     @abstractmethod
     def source_target_contents_match(self):
         ...
-
-    def compare(self):
-        if not self.source_target_contents_match():
-            return False
-        self.logger.info("All keys found in both JSON files.")
-        return True
 
     @classmethod
     def setup_logger(cls, **kwargs):
@@ -27,6 +25,55 @@ class _BaseHashComparer(metaclass=ABCMeta):
         logger.name = cls.__name__
         logger.info(f"Initializing {cls.__name__}")
         return logger
+
+    @property
+    def source_name(self):
+        return self._source_name
+
+    @source_name.setter
+    def source_name(self, value):
+        self._source_name = value
+        self._set_name_for_jj(value, "source_name")
+
+    @property
+    def target_name(self):
+        return self._target_name
+
+    @target_name.setter
+    def target_name(self, value):
+        self._target_name = value
+        self._set_name_for_jj(value, "target_name")
+
+    def _set_name_for_jj(self, value, name_attr_to_set):
+        if hasattr(self, 'jj_hashcomp'):
+            self.logger.debug(
+                f"Setting {name_attr_to_set} to {value} for {self.__class__.__name__} "
+            )
+            setattr(self.jj_hashcomp, name_attr_to_set, value)
+            return
+        self.logger.debug(f"No jj_hashcomp attribute found for {self.__class__.__name__}")
+
+    def _convert_to_path(self, value: Union[str, Path], **kwargs):
+        self.logger.warning(f"attempting to convert {type(value).__name__} to Path object...")
+        if isinstance(value, str):
+            return Path(value)
+        elif isinstance(value, Path):
+            return value
+        else:
+            raise TypeError(f"value must be a string or a Path object, not {type(value).__name__}")
+
+    def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
+        for key, value in x.items():
+            if key not in y.keys():
+                self.logger.error(f"Key {key} not found in {y_name}")
+                return False
+        return True
+
+    def compare(self):
+        if not self.source_target_contents_match():
+            return False
+        self.logger.info("All keys found in both JSON files.")
+        return True
 
 
 # TODO: Integrate with AutoBackup
@@ -39,9 +86,6 @@ class JsonToJsonHashComparer(_BaseHashComparer):
 
         self._source_json = None
         self._target_json = None
-
-        self.source_name = kwargs.get("source_name", "source_json")
-        self.target_name = kwargs.get("target_name", "target_json")
 
         self.source_json = source_json
         self.target_json = target_json
@@ -57,15 +101,29 @@ class JsonToJsonHashComparer(_BaseHashComparer):
                 raise TypeError(f"value must be a Path or a list or a dict, not {type(value).__name__}")
         return value
 
-    @staticmethod
-    def _load_json(path_to_json: Path, **kwargs):
+    def _load_json(self, path_to_json: Path, **kwargs):
         if isinstance(path_to_json, Path):
-            with open(path_to_json, 'r') as f:
-                if path_to_json.suffix == '.json':
-                    return json.load(f)
-                raise ValueError(f"File {path_to_json} is not a JSON file")
+            try:
+                with open(path_to_json, 'r') as f:
+                    if path_to_json.suffix == '.json':
+                        return json.load(f)
+                    raise ValueError(f"File {path_to_json} is not a JSON file")
+            except FileNotFoundError:
+                self.logger.error(f"File {path_to_json} not found")
+                raise
+            except json.JSONDecodeError:
+                self.logger.error(f"File {path_to_json} is not a valid JSON file")
+                raise
+            except Exception as e:
+                self.logger.error(f"Error loading JSON file {path_to_json}: {e}")
+                raise
         else:
-            raise TypeError("path_to_json must be a Path")
+            try:
+                raise TypeError("path_to_json must be a Path")
+            except TypeError as e:
+                self.logger.error(f"TypeError: {e}")
+                path_to_json = self._convert_to_path(path_to_json, **kwargs)
+                return self._load_json(path_to_json, **kwargs)
 
     @property
     def target_json(self):
@@ -86,13 +144,6 @@ class JsonToJsonHashComparer(_BaseHashComparer):
         if isinstance(value, Path):
             self.source_name = value.name
         self._source_json = self._get_json(value)
-
-    def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
-        for key, value in x.items():
-            if key not in y.keys():
-                self.logger.error(f"Key {key} not found in {y_name}")
-                return False
-        return True
 
     def _all_source_in_target(self):
         return self._all_x_keys_in_y_keys(x=self.source_json,
@@ -124,9 +175,7 @@ class JsonToArchiveComparer(_BaseHashComparer):
 
         self.archive_file, self.archive_hasher, kwargs = self.setup_archive_hasher(archive_file, **kwargs)
 
-        self.jj_hashcomp.target_name = self.archive_file.name
-
-        #kwargs.setdefault('target_name', self.archive_file.name)
+        self.target_name = self.archive_file.name
 
     def source_target_contents_match(self):
         return self.jj_hashcomp.source_target_contents_match()
@@ -180,9 +229,10 @@ class ArchiveToArchiveComparer(JsonToArchiveComparer, _BaseHashComparer):
          kwargs) = self.setup_archive_hasher(archive_file=self.source_archive_file, **kwargs)
         # noinspection PyTypeChecker
         super().__init__(source_json=self.source_archive_hash,
-                         archive_file=self.target_archive_file, **kwargs)
-        self.jj_hashcomp.source_name = kwargs.get("source_name", self.source_archive_file.name)
-        self.jj_hashcomp.target_name = kwargs.get("target_name", self.target_archive_file.name)
+                         archive_file=self.target_archive_file, **kwargs),
+
+        self.source_name = kwargs.get("source_name", self.source_archive_file.name)
+        self.target_name = kwargs.get("target_name", self.target_archive_file.name)
 
     @property
     def source_archive_hash(self) -> Union[dict, List[dict]]:
@@ -197,9 +247,8 @@ class JsonToDirectoryComparer(_BaseHashComparer):
     def __init__(self, source_json: Path, target_dir: Path, **kwargs):
         super().__init__(**kwargs)
         kwargs.setdefault('logger', self.logger)
-
-        self._source_dir_hash = None
         self._delay_hashing = None
+        self._directory_hash = None
 
         self.source_json = source_json
         self.target_dir = target_dir
@@ -207,20 +256,26 @@ class JsonToDirectoryComparer(_BaseHashComparer):
 
         self.delay_hashing = kwargs.get("delay_hashing", True)
 
-
-        # TODO: make this lazy?
-        self.directory_hash = self.directory_hasher.hash_and_record_directory(**kwargs)
-
         self.jj_hashcomp = JsonToJsonHashComparer(source_json=self.source_json,
-                                                  target_json=self.directory_hash, **kwargs)
-        self.jj_hashcomp.source_name = self.source_json.name
-        self.jj_hashcomp.target_name = self.target_dir.name
+                                                  target_json=None, **kwargs)
+        if not self.delay_hashing:
+            self.jj_hashcomp.target_json = self.directory_hash
+
+        self.source_name = self.source_json.name
+        self.target_name = self.target_dir.name
+
+    @property
+    def directory_hash(self):
+        if not self._directory_hash:
+            self._directory_hash = self.directory_hasher.hash_and_record_directory()
+        return self._directory_hash
 
     def source_target_contents_match(self):
         return self.jj_hashcomp.source_target_contents_match()
 
     def compare(self):
-        self.jj_hashcomp.target_json = self.directory_hash
+        if self.delay_hashing or self.directory_hash is None:
+            self.jj_hashcomp.target_json = self.directory_hash
         return self.jj_hashcomp.compare()
 
 
@@ -231,6 +286,7 @@ class _QuickTest:
     test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.json")
     test_dir_json = Path("../../Misc_Project_Files/Desktop_backup.json")
     test_target_dir = Path("~/Desktop").expanduser()
+    # test_target_dir = Path("../../Misc_Project_Files")#.expanduser()
 
     def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
         self.hc = None
@@ -272,6 +328,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(ja=True)
+    qt = _QuickTest(jj=True)
     qt.get_hc()
     qt.compare_test()
