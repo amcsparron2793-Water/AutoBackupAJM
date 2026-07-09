@@ -2,7 +2,7 @@ import json
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
 from typing import Union, List, Tuple, Optional
-from AutoBackupAJM import SetupLogger
+from AutoBackupAJM import SetupLogger, PROJECT_ROOT
 from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
@@ -87,11 +87,16 @@ class _BaseHashComparer(metaclass=ABCMeta):
         else:
             raise TypeError(f"value must be a string or a Path object, not {type(value).__name__}")
 
-    def _write_mismatches(self):
+    def _write_mismatches(self, **kwargs):
         # TODO: needs better file name and error handling
-        with open("mismatches.json", "w") as f:
+        mismatch_file_name = kwargs.get("mismatch_file_name", "mismatches.json")
+        mismatch_file_location = kwargs.get("mismatch_file_location",
+                                            Path(PROJECT_ROOT, "Misc_Project_Files"))
+        mismatch_file_path = mismatch_file_location / mismatch_file_name
+
+        with open(mismatch_file_path, "w") as f:
             json.dump(self.mismatch_dict, f, indent=4)
-        self.logger.info("Mismatches written to mismatches.json")
+        self.logger.info(f"Mismatches written to {mismatch_file_path}")
 
     def _log_mismatch(self, key: str, value: str, y_name: str):
         self.logger.error(f"Key {key} not found in {y_name}")
