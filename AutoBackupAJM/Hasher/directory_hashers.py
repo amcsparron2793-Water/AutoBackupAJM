@@ -1,5 +1,8 @@
+from tqdm import tqdm
+
 from pathlib import Path
 from typing import Generator, Tuple, Union
+
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
 
@@ -80,7 +83,14 @@ class DirectoryHasher(FileHasher, HashRecorder):
 
         # TODO: multithreading?
         # TODO: tqdm?
-        for fp in self._walk_directory(dir_path, **kwargs):
+
+        # total_files = [x for x in self._walk_directory(dir_path, **kwargs)]
+        # print(len(total_files))
+
+        # TODO: this works, but does not have any real progress bar
+        #  need to figure out a way to efficiently count to get a total first
+        for fp in tqdm(self._walk_directory(dir_path, **kwargs), #total=total_files,
+                       desc=f"Hashing directory {dir_path.name}", unit=" files"):
             yield self.hash_file(fp, **kwargs)
 
     def hash_and_record_directory(self, **kwargs) -> dict: #Generator[Tuple[Union[Path, str], str], None, None]:
