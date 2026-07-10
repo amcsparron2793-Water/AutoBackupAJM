@@ -100,9 +100,18 @@ class _BaseHashComparer(metaclass=ABCMeta):
 
     def _log_mismatch(self, key: str, value: str, y_name: str):
         self.logger.error(f"Key {key} not found in {y_name}")
-        self.mismatch_dict[key] = {"source": self.source_name,
-                                   "target": self.target_name,
-                                   "value": value}
+        self.mismatch_dict.update(
+            {
+                key: {
+                    "source": self.source_name,
+                    "source_type": "file" if Path(self.source_name).suffix else "directory",
+                    "target": self.target_name,
+                    "target_type": "file" if Path(self.target_name).suffix else "directory",
+                    "value": value
+                }
+            }
+        )
+
         found_mismatch = True
         return found_mismatch
 
@@ -110,24 +119,28 @@ class _BaseHashComparer(metaclass=ABCMeta):
         stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", self.stop_on_first_mismatch)
         write_mismatches_to_file = kwargs.get("write_mismatches_to_file", self.write_mismatches_to_file)
         found_mismatch = False
+        mismatch_counter = 0
 
         for key, value in x.items():
             if key not in y.keys():
                 found_mismatch = self._log_mismatch(key, value, y_name=y_name)
-
+                mismatch_counter += 1
                 if stop_on_first_mismatch:
-                    return False
+                    self.logger.warning("stopping on first mismatch.")
+                    break
                 else:
                     continue
 
         if write_mismatches_to_file:
             self._write_mismatches()
+        if mismatch_counter > 0:
+            self.logger.warning(f"Found {mismatch_counter} mismatches.")
         return not found_mismatch
 
     def compare(self):
         if not self.source_target_contents_match():
             return False
-        self.logger.info("All keys found in both JSON files.")
+        self.logger.info("source and target contents match.")
         return True
 
 
