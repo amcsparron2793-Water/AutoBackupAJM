@@ -28,6 +28,7 @@ class MismatchWriter:
 
     def __init__(self, **kwargs):
         self.logger = _BaseHashComparer.setup_logger(**kwargs)
+        self.logger.name = self.__class__.__name__
         self._found_mismatch = None
         self._mismatch_entry = None
 
@@ -79,38 +80,26 @@ class MismatchWriter:
             json.dump(self.mismatch_dict, f, indent=4)
         self.logger.info(f"Mismatches written to {self.mismatch_file_path}")
 
-    # FIXME mismatch_entry is a work in progress
     @property
     def mismatch_entry(self):
         return self._mismatch_entry
 
-    # FIXME mismatch_entry is a work in progress
     @mismatch_entry.setter
     def mismatch_entry(self, value: Tuple[str, str]):
         self._mismatch_entry = {
             value[0]: {
                 "source": self.mismatch_source,
-                # "source_type": self.source_type,
+                "source_type": self.source_type,
                 "target": self.mismatch_target,
-                # "target_type": self.target_type,
+                "target_type": self.target_type,
                 "value": value[1]
             }
         }
 
     def log_mismatch(self, key: str, value: str, y_name: str):
-        self.logger.error(f"Key {key} not found in {y_name}")
+        self.logger.debug(f"Key {key} not found in {y_name}")
         self.mismatch_entry = (key, value)
-        self.mismatch_dict.update(
-            {
-                key: {
-                    "source": self.mismatch_source,
-                    "source_type": self.source_type,
-                    "target": self.mismatch_target,
-                    "target_type": self.target_type,
-                    "value": value
-                }
-            }
-        )
+        self.mismatch_dict.update(self.mismatch_entry)
 
         self.found_mismatch = True
         return self.found_mismatch
