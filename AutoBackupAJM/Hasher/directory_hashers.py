@@ -84,12 +84,14 @@ class DirectoryHasher(FileHasher, HashRecorder):
         # TODO: multithreading?
         # TODO: tqdm?
 
-        # total_files = [x for x in self._walk_directory(dir_path, **kwargs)]
-        # print(len(total_files))
+        self._logger.info("walking directory for file paths...")
 
-        # TODO: this works, but does not have any real progress bar
-        #  need to figure out a way to efficiently count to get a total first
-        for fp in tqdm(self._walk_directory(dir_path, **kwargs), #total=total_files,
+        # TODO: is this a good way to do this? - pre-creating the list uses more memory
+        total_files = [x for x in self._walk_directory(dir_path, **kwargs)]
+        self._logger.info(f"Found {len(total_files):,} files to hash.")
+
+        # TODO: this works, but need to figure out a way to efficiently count to get a total
+        for fp in tqdm(total_files, total=len(total_files),
                        desc=f"Hashing directory {dir_path.name}", unit=" files"):
             yield self.hash_file(fp, **kwargs)
 
