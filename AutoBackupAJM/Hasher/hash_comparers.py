@@ -7,6 +7,119 @@ from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
 
+class Counter:
+    def __init__(self, start: int = 0):
+        self._value = start
+
+    @property
+    def value(self) -> int:
+        return self._value
+
+    def increment(self, amount: int = 1) -> int:
+        if amount < 0:
+            raise ValueError("amount cannot be negative")
+        self._value += amount
+        return self._value
+
+
+class MismatchWriter:
+    DEFAULT_MISMATCH_FILE_NAME = "mismatches.json"
+    DEFAULT_MISMATCH_FILE_LOCATION = Path(PROJECT_ROOT, "Misc_Project_Files")
+
+    def __init__(self, **kwargs):
+        self.logger = _BaseHashComparer.setup_logger(**kwargs)
+        self._found_mismatch = None
+        self._mismatch_entry = None
+
+        self.found_mismatch = False
+        self.mismatch_counter = Counter()
+
+        self.mismatch_source = None
+        self.mismatch_target = None
+
+        self.mismatch_dict = {}
+
+        self.mismatch_file_name = kwargs.get("mismatch_file_name",
+                                             self.__class__.DEFAULT_MISMATCH_FILE_NAME)
+        self.mismatch_file_location = kwargs.get("mismatch_file_location",
+                                                 self.__class__.DEFAULT_MISMATCH_FILE_LOCATION)
+
+    @property
+    def found_mismatch(self):
+        return self._found_mismatch
+
+    @found_mismatch.setter
+    def found_mismatch(self, value: bool):
+        if not isinstance(value, bool):
+            raise TypeError("found_mismatch must be a boolean value")
+
+        self._found_mismatch = value
+        if value:
+            self.mismatch_counter.increment()
+
+    @property
+    def mismatch_file_path(self) -> Path:
+        return self.mismatch_file_location / self.mismatch_file_name
+
+    @property
+    def source_type(self) -> str:
+        if self.mismatch_source is None:
+            raise ValueError("mismatch_source must be set before accessing source_type")
+        return "file" if Path(self.mismatch_source).suffix else "directory"
+
+    @property
+    def target_type(self) -> str:
+        if self.mismatch_target is None:
+            raise ValueError("mismatch_target must be set before accessing target_type")
+        return "file" if Path(self.mismatch_target).suffix else "directory"
+
+    def write_mismatches(self, **kwargs):
+        # TODO: needs error handling
+        with open(self.mismatch_file_path, "w") as f:
+            json.dump(self.mismatch_dict, f, indent=4)
+        self.logger.info(f"Mismatches written to {self.mismatch_file_path}")
+
+    # FIXME mismatch_entry is a work in progress
+    @property
+    def mismatch_entry(self):
+        return self._mismatch_entry
+
+    # FIXME mismatch_entry is a work in progress
+    @mismatch_entry.setter
+    def mismatch_entry(self, value: Tuple[str, str]):
+        self._mismatch_entry = {
+            value[0]: {
+                "source": self.mismatch_source,
+                # "source_type": self.source_type,
+                "target": self.mismatch_target,
+                # "target_type": self.target_type,
+                "value": value[1]
+            }
+        }
+
+    def log_mismatch(self, key: str, value: str, y_name: str):
+        self.logger.error(f"Key {key} not found in {y_name}")
+        self.mismatch_entry = (key, value)
+        self.mismatch_dict.update(
+            {
+                key: {
+                    "source": self.mismatch_source,
+                    "source_type": self.source_type,
+                    "target": self.mismatch_target,
+                    "target_type": self.target_type,
+                    "value": value
+                }
+            }
+        )
+
+        self.found_mismatch = True
+        return self.found_mismatch
+
+    def log_mismatch_counter(self):
+        if self.mismatch_counter.value > 0:
+            self.logger.warning(f"Found {self.mismatch_counter.value: ,} mismatches.")
+
+
 class _BaseHashComparer(metaclass=ABCMeta):
     DEFAULT_SOURCE_NAME = "source_file"
     DEFAULT_TARGET_NAME = "target_file"
@@ -16,12 +129,14 @@ class _BaseHashComparer(metaclass=ABCMeta):
         self._target_name = None
         self._delay_hashing = None
 
-        self.mismatch_dict = {}
-
         self.stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", False)
         self.write_mismatches_to_file = kwargs.get("write_mismatches_to_file", True)
 
         self.logger = self.setup_logger(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
+        self.mismatch_writer = MismatchWriter(**kwargs)
+
         self.source_name = kwargs.get("source_name", self.__class__.DEFAULT_SOURCE_NAME)
         self.target_name = kwargs.get("target_name", self.__class__.DEFAULT_TARGET_NAME)
 
@@ -44,6 +159,7 @@ class _BaseHashComparer(metaclass=ABCMeta):
     def source_name(self, value):
         self._source_name = value
         self._set_name_for_jj(value, "source_name")
+        self.mismatch_writer.mismatch_source = self._source_name
 
     @property
     def target_name(self):
@@ -53,6 +169,7 @@ class _BaseHashComparer(metaclass=ABCMeta):
     def target_name(self, value):
         self._target_name = value
         self._set_name_for_jj(value, "target_name")
+        self.mismatch_writer.mismatch_target = self.target_name
 
     @property
     def delay_hashing(self):
@@ -87,44 +204,14 @@ class _BaseHashComparer(metaclass=ABCMeta):
         else:
             raise TypeError(f"value must be a string or a Path object, not {type(value).__name__}")
 
-    def _write_mismatches(self, **kwargs):
-        # TODO: needs better file name and error handling
-        mismatch_file_name = kwargs.get("mismatch_file_name", "mismatches.json")
-        mismatch_file_location = kwargs.get("mismatch_file_location",
-                                            Path(PROJECT_ROOT, "Misc_Project_Files"))
-        mismatch_file_path = mismatch_file_location / mismatch_file_name
-
-        with open(mismatch_file_path, "w") as f:
-            json.dump(self.mismatch_dict, f, indent=4)
-        self.logger.info(f"Mismatches written to {mismatch_file_path}")
-
-    def _log_mismatch(self, key: str, value: str, y_name: str):
-        self.logger.error(f"Key {key} not found in {y_name}")
-        self.mismatch_dict.update(
-            {
-                key: {
-                    "source": self.source_name,
-                    "source_type": "file" if Path(self.source_name).suffix else "directory",
-                    "target": self.target_name,
-                    "target_type": "file" if Path(self.target_name).suffix else "directory",
-                    "value": value
-                }
-            }
-        )
-
-        found_mismatch = True
-        return found_mismatch
-
     def _all_x_keys_in_y_keys(self, x: dict, y: dict, y_name: str, **kwargs):
         stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", self.stop_on_first_mismatch)
         write_mismatches_to_file = kwargs.get("write_mismatches_to_file", self.write_mismatches_to_file)
         found_mismatch = False
-        mismatch_counter = 0
 
         for key, value in x.items():
             if key not in y.keys():
-                found_mismatch = self._log_mismatch(key, value, y_name=y_name)
-                mismatch_counter += 1
+                found_mismatch = self.mismatch_writer.log_mismatch(key, value, y_name=y_name)
                 if stop_on_first_mismatch:
                     self.logger.warning("stopping on first mismatch.")
                     break
@@ -132,9 +219,8 @@ class _BaseHashComparer(metaclass=ABCMeta):
                     continue
 
         if write_mismatches_to_file:
-            self._write_mismatches()
-        if mismatch_counter > 0:
-            self.logger.warning(f"Found {mismatch_counter} mismatches.")
+            self.mismatch_writer.write_mismatches()
+        self.mismatch_writer.log_mismatch_counter()
         return not found_mismatch
 
     def compare(self):
@@ -344,8 +430,8 @@ class _QuickTest:
     test_other_zip = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.zip")
     test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.json")
     test_dir_json = Path("../../Misc_Project_Files/Desktop_backup.json")
-    test_target_dir = Path("~/Desktop").expanduser()
-    # test_target_dir = Path("../../Misc_Project_Files")#.expanduser()
+    #test_target_dir = Path("~/Desktop").expanduser()
+    test_target_dir = Path("../../Misc_Project_Files")#.expanduser()
 
     def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
         self.hc = None
