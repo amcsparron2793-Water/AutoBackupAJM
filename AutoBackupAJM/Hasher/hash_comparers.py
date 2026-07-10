@@ -76,9 +76,12 @@ class MismatchWriter:
 
     def write_mismatches(self, **kwargs):
         # TODO: needs error handling
-        with open(self.mismatch_file_path, "w") as f:
-            json.dump(self.mismatch_dict, f, indent=4)
-        self.logger.info(f"Mismatches written to {self.mismatch_file_path}")
+        try:
+            with open(self.mismatch_file_path, "w") as f:
+                json.dump(self.mismatch_dict, f, indent=4)
+            self.logger.info(f"Mismatches written to {self.mismatch_file_path}")
+        except Exception as e:
+            self.logger.exception(f"Error writing mismatches to {self.mismatch_file_path}: {e}")
 
     @property
     def mismatch_entry(self):
@@ -118,11 +121,15 @@ class _BaseHashComparer(metaclass=ABCMeta):
         self._target_name = None
         self._delay_hashing = None
 
+        self.logger = self.setup_logger(**kwargs)
+        kwargs.setdefault('logger', self.logger)
+
         self.stop_on_first_mismatch = kwargs.get("stop_on_first_mismatch", False)
         self.write_mismatches_to_file = kwargs.get("write_mismatches_to_file", True)
 
-        self.logger = self.setup_logger(**kwargs)
-        kwargs.setdefault('logger', self.logger)
+
+        self.delay_hashing = kwargs.get("delay_hashing", False)
+
 
         self.mismatch_writer = MismatchWriter(**kwargs)
 
@@ -252,13 +259,13 @@ class JsonToJsonHashComparer(_BaseHashComparer):
                         return json.load(f)
                     raise ValueError(f"File {path_to_json} is not a JSON file")
             except FileNotFoundError:
-                self.logger.error(f"File {path_to_json} not found")
+                self.logger.exception(f"File {path_to_json} not found")
                 raise
-            except json.JSONDecodeError:
-                self.logger.error(f"File {path_to_json} is not a valid JSON file")
+            except (json.JSONDecodeError, ValueError):
+                self.logger.exception(f"File {path_to_json} is not a valid JSON file")
                 raise
             except Exception as e:
-                self.logger.error(f"Error loading JSON file {path_to_json}: {e}")
+                self.logger.exception(f"Error loading JSON file {path_to_json}: {e}")
                 raise
         else:
             try:
