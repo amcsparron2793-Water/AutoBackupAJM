@@ -11,8 +11,7 @@ try:
 except ImportError:
     from AutoBackupAJM._version import __version__
 
-from AutoBackupAJM import SetupLogger
-
+from AutoBackupAJM import SetupLogger, MISC_PROJECT_DIR
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -288,6 +287,6 @@ class AutoBackup:
 
 
 if __name__ == "__main__":
-    ABDB = AutoBackup(Path('../Misc_Project_Files/test_file.txt'),
-                      Path('../Misc_Project_Files/test_backups'))
+    ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
+                      Path(MISC_PROJECT_DIR/'test_backups'))
     ABDB.backup()

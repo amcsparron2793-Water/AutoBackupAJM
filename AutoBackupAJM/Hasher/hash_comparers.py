@@ -2,7 +2,7 @@ import json
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
 from typing import Union, List, Tuple, Optional
-from AutoBackupAJM import SetupLogger, PROJECT_ROOT
+from AutoBackupAJM import SetupLogger, PROJECT_ROOT, MISC_PROJECT_DIR
 from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 
@@ -24,7 +24,7 @@ class Counter:
 
 class MismatchWriter:
     DEFAULT_MISMATCH_FILE_NAME = "mismatches.json"
-    DEFAULT_MISMATCH_FILE_LOCATION = Path(PROJECT_ROOT, "Misc_Project_Files")
+    DEFAULT_MISMATCH_FILE_LOCATION = Path(MISC_PROJECT_DIR)
 
     def __init__(self, **kwargs):
         self.logger = _BaseHashComparer.setup_logger(**kwargs)
@@ -424,13 +424,13 @@ class JsonToDirectoryComparer(_BaseHashComparer):
 
 
 class _QuickTest:
-    test_backup_json = Path("../../Misc_Project_Files/HostedFeatureStorage.json")
-    test_new_zip = Path("../../Misc_Project_Files/HostedFeatureStorage.zip")
-    test_other_zip = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.zip")
-    test_new_json = Path("../../Misc_Project_Files/HostedFeatureStorage_Other.json")
-    test_dir_json = Path("../../Misc_Project_Files/Desktop_backup.json")
+    test_backup_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.json")
+    test_new_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.zip")
+    test_other_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
+    test_new_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.json")
+    test_dir_json = Path(MISC_PROJECT_DIR, "Desktop_backup.json")
     #test_target_dir = Path("~/Desktop").expanduser()
-    test_target_dir = Path("../../Misc_Project_Files")#.expanduser()
+    test_target_dir = Path(MISC_PROJECT_DIR)
 
     def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
         self.hc = None

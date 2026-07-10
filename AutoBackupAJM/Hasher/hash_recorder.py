@@ -6,7 +6,7 @@ from os.path import commonpath
 from pathlib import Path
 from typing import Union, Optional, Generator
 
-from AutoBackupAJM import PROJECT_ROOT, SetupLogger
+from AutoBackupAJM import PROJECT_ROOT, SetupLogger, MISC_PROJECT_DIR
 
 
 class _Validators:
@@ -83,7 +83,7 @@ class _Validators:
 
 class _Recorder(_Validators):
     DEFAULT_FILE_NAME = "directory_hashes.json"
-    DEFAULT_RECORD_SAVE_DIR = Path(PROJECT_ROOT / "Misc_Project_Files")
+    DEFAULT_RECORD_SAVE_DIR = Path(MISC_PROJECT_DIR)
 
     def __init__(self, **kwargs):
         self._logger = SetupLogger.setup_logger(**kwargs)
