@@ -1,7 +1,7 @@
 from tqdm import tqdm
 
 from pathlib import Path
-from typing import Generator, Tuple, Union
+from typing import Generator, Tuple, Union, List
 
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
@@ -76,6 +76,12 @@ class DirectoryHasher(FileHasher, HashRecorder):
                           f" including {parent_counter: ,} parent directories "
                           f"and {child_counter: ,} child directories.")
 
+    def _get_files_with_count(self, dir_path, **kwargs) -> Tuple[List[Union[Path, str]], int]:
+        files = [x for x in self._walk_directory(dir_path, **kwargs)]
+        total_files = len(files)
+        self._logger.info(f"Found {total_files:,} files to hash.")
+        return files, total_files
+
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
@@ -85,13 +91,11 @@ class DirectoryHasher(FileHasher, HashRecorder):
         # TODO: tqdm?
 
         self._logger.info("walking directory for file paths...")
-
-        # TODO: is this a good way to do this? - pre-creating the list uses more memory
-        total_files = [x for x in self._walk_directory(dir_path, **kwargs)]
-        self._logger.info(f"Found {len(total_files):,} files to hash.")
+        # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
+        files, total_files = self._get_files_with_count(dir_path, **kwargs)
 
         # TODO: this works, but need to figure out a way to efficiently count to get a total
-        for fp in tqdm(total_files, total=len(total_files),
+        for fp in tqdm(files, total=total_files,
                        desc=f"Hashing directory {dir_path.name}", unit=" files"):
             yield self.hash_file(fp, **kwargs)
 
