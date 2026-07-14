@@ -77,10 +77,23 @@ class DirectoryHasher(FileHasher, HashRecorder):
                           f"and {child_counter: ,} child directories.")
 
     def _get_files_with_count(self, dir_path, **kwargs) -> Tuple[List[Union[Path, str]], int]:
+        self._logger.info("walking directory for file paths and count...")
         files = [x for x in self._walk_directory(dir_path, **kwargs)]
         total_files = len(files)
         self._logger.info(f"Found {total_files:,} files to hash.")
         return files, total_files
+
+    def _get_progress_bar(self, file_list: List[Union[Path, str]], **kwargs):
+        dir_path_name = kwargs.get('dir_path_name', '')
+        description = kwargs.get('description', f"Hashing directory {dir_path_name}")
+        total_files = len(file_list)
+        unit = kwargs.get('unit', ' files')
+
+        # TODO: this works, but need to figure out a way to efficiently count to get a total
+        progress_bar = tqdm(file_list, total=total_files,
+                            desc=description,
+                            unit=unit)
+        return progress_bar
 
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
@@ -88,18 +101,17 @@ class DirectoryHasher(FileHasher, HashRecorder):
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
 
         # TODO: multithreading?
-        # TODO: tqdm?
 
-        self._logger.info("walking directory for file paths and count...")
         # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
         files, total_files = self._get_files_with_count(dir_path, **kwargs)
 
+        total_files = total_files if total_files else -1
+        progress_bar = self._get_progress_bar(files, dir_path_name=dir_path.name) if files else None
+
         self._logger.info(f"Hashing {total_files:,} files in directory {dir_path.name}.")
-        # TODO: this works, but need to figure out a way to efficiently count to get a total
-        progress_bar = tqdm(files, total=total_files,
-                            desc=f"Hashing directory {dir_path.name}",
-                            unit=" files")
-        for fp in progress_bar:
+        fp_iterable = progress_bar if progress_bar else self._walk_directory(dir_path, **kwargs)
+
+        for fp in fp_iterable:
             yield self.hash_file(fp, **kwargs)
 
     def hash_and_record_directory(self, **kwargs) -> dict:  #Generator[Tuple[Union[Path, str], str], None, None]:
