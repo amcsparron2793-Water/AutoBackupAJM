@@ -1,7 +1,8 @@
 from tqdm import tqdm
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generator, Tuple, Union, List
+from typing import Generator, Tuple, Union, List, Optional
 
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
@@ -90,12 +91,12 @@ class DirectoryHasher(FileHasher, HashRecorder):
         unit = kwargs.get('unit', ' files')
 
         # TODO: this works, but need to figure out a way to efficiently count to get a total
-        progress_bar = tqdm(file_list, total=total_files,
+        progress_bar = tqdm(total=total_files,
                             desc=description,
                             unit=unit)
         return progress_bar
 
-    def _setup_and_get_progress_bar(self, dir_path: Path, **kwargs):
+    def _setup_and_get_progress_bar(self, dir_path: Path, **kwargs) -> Tuple[Optional[tqdm], int, Optional[List[Union[Path, str]]]]:
         use_progress_bar = kwargs.get("use_progress_bar", True)
         # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
         if use_progress_bar:
@@ -105,23 +106,43 @@ class DirectoryHasher(FileHasher, HashRecorder):
             total_files = -1
 
         progress_bar = self._get_progress_bar(files, dir_path_name=dir_path.name) if files else None
-        return progress_bar, total_files
+        return progress_bar, total_files, files
 
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
         kwargs.setdefault("use_progress_bar", True)
+        multithreaded = kwargs.get("multithreaded", True)
+        max_workers = kwargs.get("max_workers", None)
 
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
 
-        progress_bar, total_files = self._setup_and_get_progress_bar(dir_path, **kwargs)
-        # TODO: multithreading?
+        progress_bar, total_files, files = self._setup_and_get_progress_bar(dir_path, **kwargs)
 
         self._logger.info(f"Hashing {total_files:,} files in directory {dir_path.name}.")
-        fp_iterable = progress_bar if progress_bar else self._walk_directory(dir_path, **kwargs)
+        fp_iterable = files if files else self._walk_directory(dir_path, **kwargs)
 
-        for fp in fp_iterable:
-            yield self.hash_file(fp, **kwargs)
+        # TODO: make submethod
+        if multithreaded:
+            # Consume the iterable to get all file paths if we haven't already
+            if not isinstance(fp_iterable, list):
+                fp_list = list(fp_iterable)
+            else:
+                fp_list = fp_iterable
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # We need to be careful with kwargs and progress_bar
+                # hash_file uses its own progress bar if not careful, but here it's fine
+                future_to_fp = {executor.submit(self.hash_file, fp, **kwargs): fp for fp in fp_list}
+                for future in as_completed(future_to_fp):
+                    yield future.result()
+                    if progress_bar:
+                        progress_bar.update(1)
+        else:
+            for fp in fp_iterable:
+                if progress_bar:
+                    progress_bar.update(1)
+                yield self.hash_file(fp, **kwargs)
 
     def hash_and_record_directory(self, **kwargs) -> dict:  #Generator[Tuple[Union[Path, str], str], None, None]:
         kwargs.setdefault("relative_to", self.input_path.parent)

@@ -429,8 +429,8 @@ class _QuickTest:
     test_other_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
     test_new_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.json")
     test_dir_json = Path(MISC_PROJECT_DIR, "Desktop_backup.json")
-    #test_target_dir = Path("~/Desktop").expanduser()
-    test_target_dir = Path(MISC_PROJECT_DIR)
+    test_target_dir = Path("~/Desktop").expanduser()
+    #test_target_dir = Path(MISC_PROJECT_DIR)
 
     def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
         self.hc = None
