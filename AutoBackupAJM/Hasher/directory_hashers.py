@@ -99,11 +99,16 @@ class DirectoryHasher(FileHasher, HashRecorder):
         dir_path = self._validate_input_path_is_dir()
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
+        use_progress_bar = kwargs.get("use_progress_bar", True)
 
         # TODO: multithreading?
 
         # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
-        files, total_files = self._get_files_with_count(dir_path, **kwargs)
+        if use_progress_bar:
+            files, total_files = self._get_files_with_count(dir_path, **kwargs)
+        else:
+            files = None  # self._walk_directory(dir_path, **kwargs)
+            total_files = None
 
         total_files = total_files if total_files else -1
         progress_bar = self._get_progress_bar(files, dir_path_name=dir_path.name) if files else None
