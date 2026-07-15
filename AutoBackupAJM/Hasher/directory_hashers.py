@@ -109,9 +109,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
         return progress_bar, total_files, files
 
     def _mt_hash_directory(self, fp_iterable: Iterable,
-                          max_workers: Optional[int],
-                          progress_bar: Optional[tqdm] = None,
-                          **kwargs):
+                           max_workers: Optional[int],
+                           progress_bar: Optional[tqdm] = None,
+                           **kwargs):
         # TODO: make this work for self._get_files_with_count
         # Consume the iterable to get all file paths if we haven't already
         if not isinstance(fp_iterable, list):
@@ -134,6 +134,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
         kwargs.setdefault("use_progress_bar", True)
         multithreaded = kwargs.get("multithreaded", True)
         max_workers = kwargs.get("max_workers", None)
+
+        # FIXME: there is a bug with multithreading and progress bars - they don't update properly
+        # FIXME: mismatches arnt being detected properly
 
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
 
