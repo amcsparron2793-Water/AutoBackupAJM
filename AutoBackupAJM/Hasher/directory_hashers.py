@@ -2,7 +2,7 @@ from tqdm import tqdm
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generator, Tuple, Union, List, Optional
+from typing import Generator, Tuple, Union, List, Optional, Iterable
 
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
@@ -108,6 +108,26 @@ class DirectoryHasher(FileHasher, HashRecorder):
         progress_bar = self._get_progress_bar(files, dir_path_name=dir_path.name) if files else None
         return progress_bar, total_files, files
 
+    def _mt_hash_directory(self, fp_iterable: Iterable,
+                          max_workers: Optional[int],
+                          progress_bar: Optional[tqdm] = None,
+                          **kwargs):
+        # TODO: make this work for self._get_files_with_count
+        # Consume the iterable to get all file paths if we haven't already
+        if not isinstance(fp_iterable, list):
+            fp_list = list(fp_iterable)
+        else:
+            fp_list = fp_iterable
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # We need to be careful with kwargs and progress_bar
+            # hash_file uses its own progress bar if not careful, but here it's fine
+            future_to_fp = {executor.submit(self.hash_file, fp, **kwargs): fp for fp in fp_list}
+            for future in as_completed(future_to_fp):
+                yield future.result()
+                if progress_bar:
+                    progress_bar.update(1)
+
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
@@ -122,22 +142,8 @@ class DirectoryHasher(FileHasher, HashRecorder):
         self._logger.info(f"Hashing {total_files:,} files in directory {dir_path.name}.")
         fp_iterable = files if files else self._walk_directory(dir_path, **kwargs)
 
-        # TODO: make submethod
         if multithreaded:
-            # Consume the iterable to get all file paths if we haven't already
-            if not isinstance(fp_iterable, list):
-                fp_list = list(fp_iterable)
-            else:
-                fp_list = fp_iterable
-
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # We need to be careful with kwargs and progress_bar
-                # hash_file uses its own progress bar if not careful, but here it's fine
-                future_to_fp = {executor.submit(self.hash_file, fp, **kwargs): fp for fp in fp_list}
-                for future in as_completed(future_to_fp):
-                    yield future.result()
-                    if progress_bar:
-                        progress_bar.update(1)
+            self._mt_hash_directory(fp_iterable, max_workers, progress_bar, **kwargs)
         else:
             for fp in fp_iterable:
                 if progress_bar:
