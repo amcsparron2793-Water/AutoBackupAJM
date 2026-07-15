@@ -95,23 +95,27 @@ class DirectoryHasher(FileHasher, HashRecorder):
                             unit=unit)
         return progress_bar
 
-    def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
-        dir_path = self._validate_input_path_is_dir()
-        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
-        kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
+    def _setup_and_get_progress_bar(self, dir_path: Path, **kwargs):
         use_progress_bar = kwargs.get("use_progress_bar", True)
-
-        # TODO: multithreading?
-
         # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
         if use_progress_bar:
             files, total_files = self._get_files_with_count(dir_path, **kwargs)
         else:
             files = None  # self._walk_directory(dir_path, **kwargs)
-            total_files = None
+            total_files = -1
 
-        total_files = total_files if total_files else -1
         progress_bar = self._get_progress_bar(files, dir_path_name=dir_path.name) if files else None
+        return progress_bar, total_files
+
+    def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
+        dir_path = self._validate_input_path_is_dir()
+        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
+
+        kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
+        kwargs.setdefault("use_progress_bar", True)
+
+        progress_bar, total_files = self._setup_and_get_progress_bar(dir_path, **kwargs)
+        # TODO: multithreading?
 
         self._logger.info(f"Hashing {total_files:,} files in directory {dir_path.name}.")
         fp_iterable = progress_bar if progress_bar else self._walk_directory(dir_path, **kwargs)
