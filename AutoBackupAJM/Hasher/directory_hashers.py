@@ -109,10 +109,10 @@ class DirectoryHasher(FileHasher, HashRecorder):
 
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
-        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
-
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
         kwargs.setdefault("use_progress_bar", True)
+
+        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
 
         progress_bar, total_files = self._setup_and_get_progress_bar(dir_path, **kwargs)
         # TODO: multithreading?
