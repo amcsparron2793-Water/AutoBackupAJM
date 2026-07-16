@@ -163,7 +163,7 @@ class LargeDirectoryHasher(LargeFileHasher, DirectoryHasher):
 
 
 if __name__ == "__main__":
-    dir_hasher = DirectoryHasher(Path("~/Desktop").expanduser())  #Path("../../logs"))
+    dir_hasher = DirectoryHasher(Path("~/Desktop/ArcMap and Pro Projects").expanduser())  #Path("../../logs"))
     hr = dir_hasher.hash_and_record_directory()
     #print(x)
     # for x in dir_hasher.hash_directory():
