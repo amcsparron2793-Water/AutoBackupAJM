@@ -135,8 +135,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
         multithreaded = kwargs.get("multithreaded", True)
         max_workers = kwargs.get("max_workers", None)
 
-        # FIXME: there is a bug with multithreading and progress bars - they don't update properly
-        # FIXME: mismatches arnt being detected properly
+        # FIXME: mismatches arnt being detected properly, possibly due to unsorted dict?
 
         self._logger.info(f"Hashing directory {dir_path.resolve()}.")
 

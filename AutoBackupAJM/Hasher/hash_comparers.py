@@ -424,10 +424,10 @@ class JsonToDirectoryComparer(_BaseHashComparer):
 
 
 class _QuickTest:
-    test_backup_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.json")
+    test_backup_json = Path(MISC_PROJECT_DIR, "ArcMap_and_Pro_Projects_Backup.json")
     test_new_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.zip")
     test_other_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
-    test_new_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.json")
+    test_new_json = Path(MISC_PROJECT_DIR, "ArcMap and Pro Projects.json")
     test_dir_json = Path(MISC_PROJECT_DIR, "ArcMap_and_Pro_Projects_Backup.json")
     test_target_dir = Path("~/Desktop/ArcMap and Pro Projects").expanduser()
     # test_target_dir = Path(MISC_PROJECT_DIR)
