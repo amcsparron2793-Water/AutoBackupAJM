@@ -116,9 +116,11 @@ class DirectoryHasher(FileHasher, HashRecorder):
         # Consume the iterable to get all file paths if we haven't already
         if not isinstance(fp_iterable, list):
             fp_list = list(fp_iterable)
+            self._logger.debug("converted iterable to list for multithreading")
         else:
             fp_list = fp_iterable
 
+        self._logger.info("Starting multithreaded hashing...")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # We need to be careful with kwargs and progress_bar
             # hash_file uses its own progress bar if not careful, but here it's fine
@@ -134,10 +136,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
         kwargs.setdefault("use_progress_bar", True)
         multithreaded = kwargs.get("multithreaded", True)
         max_workers = kwargs.get("max_workers", None)
+        self._logger.debug("multithreaded: %s, max_workers: %s", multithreaded, max_workers)
 
-        # FIXME: mismatches arnt being detected properly, possibly due to unsorted dict?
-
-        self._logger.info(f"Hashing directory {dir_path.resolve()}.")
+        self._logger.info(f"Hashing directory {dir_path.resolve()}")
 
         progress_bar, total_files, files = self._setup_and_get_progress_bar(dir_path, **kwargs)
 
@@ -145,7 +146,8 @@ class DirectoryHasher(FileHasher, HashRecorder):
         fp_iterable = files if files else self._walk_directory(dir_path, **kwargs)
 
         if multithreaded:
-            self._mt_hash_directory(fp_iterable, max_workers, progress_bar, **kwargs)
+            self._logger.info("Hashing files in parallel...")
+            yield from self._mt_hash_directory(fp_iterable, max_workers, progress_bar, **kwargs)
         else:
             for fp in fp_iterable:
                 if progress_bar:
