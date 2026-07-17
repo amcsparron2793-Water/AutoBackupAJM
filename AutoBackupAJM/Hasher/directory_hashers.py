@@ -60,7 +60,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
             full_path = current_dir / file
             yield full_path
 
-    # TODO: multithread this?
     def _walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
         multithreaded = kwargs.get("multithreaded", self.multithreaded)
         if multithreaded:
@@ -172,7 +171,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
         total_files = len(file_list)
         unit = kwargs.get('unit', ' files')
 
-        # TODO: this works, but need to figure out a way to efficiently count to get a total
         progress_bar = tqdm(total=total_files,
                             desc=description,
                             unit=unit)
@@ -180,7 +178,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
 
     def _setup_and_get_progress_bar(self, dir_path: Path, **kwargs) -> Tuple[Optional[tqdm], int, Optional[List[Union[Path, str]]]]:
         use_progress_bar = kwargs.get("use_progress_bar", True)
-        # TODO: is this a good way to do this? - pre-creating the list uses more memory - multithreading?
         if use_progress_bar:
             files, total_files = self._get_files_with_count(dir_path, **kwargs)
         else:
@@ -212,6 +209,12 @@ class DirectoryHasher(FileHasher, HashRecorder):
                 if progress_bar:
                     progress_bar.update(1)
 
+    def _st_hash_directory(self, fp_iterable: Iterable, progress_bar: Optional[tqdm] = None, **kwargs):
+        for fp in fp_iterable:
+            if progress_bar:
+                progress_bar.update(1)
+            yield self.hash_file(fp, **kwargs)
+
     def hash_directory(self, **kwargs) -> Generator[Tuple[Union[Path, str], str], None, None]:
         dir_path = self._validate_input_path_is_dir()
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
@@ -233,10 +236,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
             yield from self._mt_hash_directory(fp_iterable, max_workers, progress_bar, **kwargs)
         else:
             self._logger.info("Hashing files sequentially...")
-            for fp in fp_iterable:
-                if progress_bar:
-                    progress_bar.update(1)
-                yield self.hash_file(fp, **kwargs)
+            yield from self._st_hash_directory(fp_iterable, progress_bar, **kwargs)
 
     def hash_and_record_directory(self, **kwargs) -> dict:  #Generator[Tuple[Union[Path, str], str], None, None]:
         kwargs.setdefault("relative_to", self.input_path.parent)

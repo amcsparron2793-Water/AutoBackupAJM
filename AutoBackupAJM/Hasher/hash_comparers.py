@@ -467,6 +467,7 @@ class _QuickTest:
             target_dir = self.test_target_dir if not self._use_big else self.test_big_target_dir
             self.hc = JsonToDirectoryComparer(source_json=src_json,
                                               target_dir=target_dir,
+                                              multithreading=True,
                                               **kwargs)
 
     def compare_test(self):
