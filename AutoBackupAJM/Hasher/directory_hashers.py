@@ -2,7 +2,8 @@ from tqdm import tqdm
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generator, Tuple, Union, List, Optional, Iterable
+from typing import Generator, Tuple, Union, List, Optional, Iterable, Set
+import threading
 
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
@@ -43,13 +44,13 @@ class DirectoryHasher(FileHasher, HashRecorder):
         ignore_system_dirs = kwargs.get("ignore_system_dirs", self.ignore_system_dirs)
 
         if ignore_system_dirs:
-            if self._parent_is_system_dir(current_dir):
-                child_counter += 1
-                return child_counter, parent_counter, True
-            elif self._curr_dir_is_system_dir(current_dir):
+            if current_dir.name.startswith(tuple(self.SYSTEM_DIR_PREFIXES)):
                 self._logger.debug(f"Ignoring system directory {current_dir}")
                 parent_counter += 1
                 return parent_counter, child_counter, True
+            elif self._parent_is_system_dir(current_dir):
+                child_counter += 1
+                return child_counter, parent_counter, True
 
         return parent_counter, child_counter, False
 
@@ -60,7 +61,14 @@ class DirectoryHasher(FileHasher, HashRecorder):
             yield full_path
 
     # TODO: multithread this?
-    def _walk_directory(self, dir_path: Path, **kwargs):
+    def _walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
+        multithreaded = kwargs.get("multithreaded", self.multithreaded)
+        if multithreaded:
+            yield from self._mt_walk_directory(dir_path, **kwargs)
+        else:
+            yield from self._st_walk_directory(dir_path, **kwargs)
+
+    def _st_walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
         parent_counter = 0
         child_counter = 0
         total_counter = 0
@@ -78,6 +86,78 @@ class DirectoryHasher(FileHasher, HashRecorder):
         self._logger.info(f"Ignored a total of {total_counter: ,} directories,"
                           f" including {parent_counter: ,} parent directories "
                           f"and {child_counter: ,} child directories.")
+
+    def _mt_walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
+        max_workers = kwargs.get("max_workers", None)
+        ignore_system_dirs = kwargs.get("ignore_system_dirs", self.ignore_system_dirs)
+
+        files_list = []
+        files_lock = threading.Lock()
+        
+        parent_counter = 0
+        child_counter = 0
+        total_counter = 0
+        counter_lock = threading.Lock()
+
+        def process_dir(current_dir: Path):
+            nonlocal parent_counter, child_counter, total_counter
+            
+            # Check if this directory should be ignored
+            if ignore_system_dirs:
+                if self._curr_dir_is_system_dir(current_dir):
+                    self._logger.debug(f"Ignoring system directory {current_dir}")
+                    with counter_lock:
+                        parent_counter += 1
+                        total_counter += 1
+                    return []
+                elif self._parent_is_system_dir(current_dir):
+                    with counter_lock:
+                        child_counter += 1
+                        total_counter += 1
+                    return []
+
+            try:
+                # We only want files in the current dir, and subdirs to be processed by other tasks
+                # But wait, if we use path.walk() here, it will walk the whole subtree.
+                # If we want to multithread the walk, we should probably do it level by level or 
+                # use a queue.
+                
+                # Using os.scandir or Path.iterdir for finer control
+                local_files = []
+                subdirs = []
+                for entry in current_dir.iterdir():
+                    if entry.is_file():
+                        local_files.append(entry)
+                    elif entry.is_dir():
+                        subdirs.append(entry)
+                
+                if local_files:
+                    with files_lock:
+                        files_list.extend(local_files)
+                
+                return subdirs
+            except PermissionError:
+                self._logger.warning(f"Permission denied: {current_dir}")
+                return []
+            except Exception as e:
+                self._logger.error(f"Error walking {current_dir}: {e}")
+                return []
+
+        pending_dirs = [dir_path]
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            while pending_dirs:
+                futures = [executor.submit(process_dir, d) for d in pending_dirs]
+                pending_dirs = []
+                for future in as_completed(futures):
+                    subdirs = future.result()
+                    pending_dirs.extend(subdirs)
+
+        self._logger.info(f"Ignored a total of {total_counter: ,} directories,"
+                          f" including {parent_counter: ,} parent directories "
+                          f"and {child_counter: ,} child directories.")
+        
+        yield from files_list
 
     def _get_files_with_count(self, dir_path, **kwargs) -> Tuple[List[Union[Path, str]], int]:
         self._logger.info("walking directory for file paths and count...")

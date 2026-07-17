@@ -429,10 +429,13 @@ class _QuickTest:
     test_other_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
     test_new_json = Path(MISC_PROJECT_DIR, "ArcMap and Pro Projects.json")
     test_dir_json = Path(MISC_PROJECT_DIR, "ArcMap_and_Pro_Projects_Backup.json")
+    test_big_dir_json = Path(MISC_PROJECT_DIR, "Desktop_Backup.json")
     test_target_dir = Path("~/Desktop/ArcMap and Pro Projects").expanduser()
+    test_big_target_dir = Path("~/Desktop").expanduser()
     # test_target_dir = Path(MISC_PROJECT_DIR)
 
     def __init__(self, jj=False, ja=False, aa=False, jd=False, **kwargs):
+        self._use_big = kwargs.get('use_big', False)
         self.hc = None
         self.jj = jj
         self.ja = ja
@@ -460,8 +463,10 @@ class _QuickTest:
                                                target_archive_file=self.test_other_zip,
                                                **kwargs)
         elif self.jd:
-            self.hc = JsonToDirectoryComparer(source_json=self.test_dir_json,
-                                              target_dir=self.test_target_dir,
+            src_json = self.test_dir_json if not self._use_big else self.test_big_dir_json
+            target_dir = self.test_target_dir if not self._use_big else self.test_big_target_dir
+            self.hc = JsonToDirectoryComparer(source_json=src_json,
+                                              target_dir=target_dir,
                                               **kwargs)
 
     def compare_test(self):
@@ -472,6 +477,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(jd=True)
+    qt = _QuickTest(jd=True, use_big=True)
     qt.get_hc()
     qt.compare_test()
