@@ -16,6 +16,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
         super().__init__(input_path, **kwargs)
         kwargs.setdefault("logger", self._logger)
         HashRecorder.__init__(self, **kwargs)
+        self.multithreaded = kwargs.get("multithreaded", True)
 
     @classmethod
     def _parent_is_system_dir(cls, dir_path: Path) -> bool:
@@ -58,6 +59,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
             full_path = current_dir / file
             yield full_path
 
+    # TODO: multithread this?
     def _walk_directory(self, dir_path: Path, **kwargs):
         parent_counter = 0
         child_counter = 0
@@ -134,7 +136,8 @@ class DirectoryHasher(FileHasher, HashRecorder):
         dir_path = self._validate_input_path_is_dir()
         kwargs.setdefault("ignore_system_dirs", self.ignore_system_dirs)
         kwargs.setdefault("use_progress_bar", True)
-        multithreaded = kwargs.get("multithreaded", True)
+
+        multithreaded = kwargs.get("multithreaded", self.multithreaded)
         max_workers = kwargs.get("max_workers", None)
         self._logger.debug("multithreaded: %s, max_workers: %s", multithreaded, max_workers)
 
@@ -149,6 +152,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
             self._logger.info("Hashing files in parallel...")
             yield from self._mt_hash_directory(fp_iterable, max_workers, progress_bar, **kwargs)
         else:
+            self._logger.info("Hashing files sequentially...")
             for fp in fp_iterable:
                 if progress_bar:
                     progress_bar.update(1)
