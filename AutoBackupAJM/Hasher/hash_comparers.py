@@ -478,6 +478,6 @@ class _QuickTest:
 
 
 if __name__ == '__main__':
-    qt = _QuickTest(jd=True, use_big=True)
+    qt = _QuickTest(jd=True)
     qt.get_hc()
     qt.compare_test()
