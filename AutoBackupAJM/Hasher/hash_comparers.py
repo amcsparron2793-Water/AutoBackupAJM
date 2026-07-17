@@ -76,6 +76,8 @@ class MismatchWriter:
 
     def write_mismatches(self, **kwargs):
         # TODO: needs error handling
+        if not self.mismatch_dict:
+            return
         try:
             with open(self.mismatch_file_path, "w") as f:
                 json.dump(self.mismatch_dict, f, indent=4)
