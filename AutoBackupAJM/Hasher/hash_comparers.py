@@ -320,7 +320,7 @@ class JsonToDirectoryComparer(_BaseHashComparer):
 
 
 if __name__ == '__main__':
-    ...
-    # qt = _QuickTest(jd=True)
-    # qt.get_hc()
-    # qt.compare_test()
+    from AutoBackupAJM.utilities import _QuickTest
+    qt = _QuickTest(jd=True, class_to_use=JsonToDirectoryComparer)
+    qt.get_hc()
+    qt.compare_test()
