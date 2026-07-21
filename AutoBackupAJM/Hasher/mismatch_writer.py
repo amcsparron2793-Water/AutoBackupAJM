@@ -1,6 +1,8 @@
+from datetime import datetime
 import json
+from os import PathLike
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 
 from AutoBackupAJM import MISC_PROJECT_DIR, SetupLogger
 from AutoBackupAJM.utilities import Counter
@@ -9,25 +11,55 @@ from AutoBackupAJM.utilities import Counter
 class MismatchWriter:
     DEFAULT_MISMATCH_FILE_NAME = "mismatches.json"
     DEFAULT_MISMATCH_FILE_LOCATION = Path(MISC_PROJECT_DIR)
+    MISMATCH_TIMESTAMP_FORMAT = "%Y%m%d_%H%M"
 
     def __init__(self, **kwargs):
         self.logger = SetupLogger.setup_logger(**kwargs)
         self.logger.name = self.__class__.__name__
         self._found_mismatch = None
         self._mismatch_entry = None
+        self._mismatch_file_name = None
 
         self.found_mismatch = False
         self.mismatch_counter = Counter()
 
         self.mismatch_source = None
         self.mismatch_target = None
-
         self.mismatch_dict = {}
+
+        # this is purposely set this way so that it cant be changed after initialization
+        self._append_timestamp_to_file_name = kwargs.get("append_timestamp_to_file_name", True)
 
         self.mismatch_file_name = kwargs.get("mismatch_file_name",
                                              self.__class__.DEFAULT_MISMATCH_FILE_NAME)
         self.mismatch_file_location = kwargs.get("mismatch_file_location",
                                                  self.__class__.DEFAULT_MISMATCH_FILE_LOCATION)
+
+    @staticmethod
+    def str_to_resolved_path(value: Union[Path, str]) -> Path:
+        if isinstance(value, (Path, str, PathLike)):
+            value: Path = Path(value).resolve()
+        else:
+            raise TypeError("mismatch_file_name must be a string, Path, or PathLike object")
+        return value
+
+    @property
+    def append_timestamp_to_file_name(self):
+        return self._append_timestamp_to_file_name
+
+    @property
+    def mismatch_file_name(self):
+        return self._mismatch_file_name
+
+    @mismatch_file_name.setter
+    def mismatch_file_name(self, value: Union[Path, str]):
+        value: Path = self.str_to_resolved_path(value)
+        current_ts = datetime.now().strftime(self.__class__.MISMATCH_TIMESTAMP_FORMAT)
+        if self.append_timestamp_to_file_name:
+            self.logger.debug(f"Appending timestamp to mismatch file name ({value.name}): {current_ts}")
+            self._mismatch_file_name = f"{value.stem}_{current_ts}{value.suffix}"
+        else:
+            self._mismatch_file_name = value.name
 
     @property
     def found_mismatch(self):
