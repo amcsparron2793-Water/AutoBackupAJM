@@ -6,5 +6,7 @@ __pycache__
 /*.egg-info/
 /.tox/
 /Misc_Project_Files/HostedFeatureStorage*.zip
+/Misc_Project_Files/test*
+/Misc_Project_Files/*.json
 
 test_backups/
