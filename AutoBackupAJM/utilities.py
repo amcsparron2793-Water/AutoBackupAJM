@@ -41,10 +41,12 @@ class _QuickTest:
     VALID_HASHER_CODES = _ValidHasherCodes
 
     def __init__(self, hasher_type_code: str, **kwargs):
+        # TODO: get rid of these and use the valid hasher codes directly
         self._jj = False
         self._ja = False
         self._aa = False
         self._jd = False
+
         self._class_to_use = None
         self.hc = None
 
