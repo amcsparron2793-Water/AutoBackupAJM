@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Generator, Tuple, Union, List, Optional, Iterable, Set
 import threading
-
+from AutoBackupAJM.utilities import Counter
 from AutoBackupAJM.Hasher.file_hashers import FileHasher, LargeFileHasher
 from AutoBackupAJM.Hasher.hash_recorder import HashRecorder
 
@@ -39,17 +39,17 @@ class DirectoryHasher(FileHasher, HashRecorder):
             raise ValueError(f"self.input_path must be a directory, to hash a file use hash_file")
         return dir_path
 
-    def _count_and_continue(self, parent_counter: int, child_counter: int,
-                            current_dir: Path, **kwargs) -> Tuple[int, int, bool]:
+    def _count_and_continue(self, parent_counter: Counter, child_counter: Counter,
+                            current_dir: Path, **kwargs) -> Tuple[Counter, Counter, bool]:
         ignore_system_dirs = kwargs.get("ignore_system_dirs", self.ignore_system_dirs)
 
         if ignore_system_dirs:
             if current_dir.name.startswith(tuple(self.SYSTEM_DIR_PREFIXES)):
                 self._logger.debug(f"Ignoring system directory {current_dir}")
-                parent_counter += 1
+                parent_counter.increment()
                 return parent_counter, child_counter, True
             elif self._parent_is_system_dir(current_dir):
-                child_counter += 1
+                child_counter.increment()
                 return child_counter, parent_counter, True
 
         return parent_counter, child_counter, False
@@ -68,9 +68,10 @@ class DirectoryHasher(FileHasher, HashRecorder):
             yield from self._st_walk_directory(dir_path, **kwargs)
 
     def _st_walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
-        parent_counter = 0
-        child_counter = 0
-        total_counter = 0
+        # TODO: HERE
+        parent_counter = Counter()
+        child_counter = Counter()
+        total_counter = Counter()
 
         for current_dir, subdirs, files in dir_path.walk():  #dir_path.iterdir():
             # see if we should continue walking
@@ -78,7 +79,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
                 parent_counter, child_counter, current_dir, **kwargs
             )
             if should_continue:
-                total_counter += 1
+                total_counter.increment()
                 continue
 
             yield from self._gen_walk_full_dir_path(current_dir, files)
@@ -92,10 +93,10 @@ class DirectoryHasher(FileHasher, HashRecorder):
 
         files_list = []
         files_lock = threading.Lock()
-        
-        parent_counter = 0
-        child_counter = 0
-        total_counter = 0
+        # TODO: HERE
+        parent_counter = Counter()
+        child_counter = Counter()
+        total_counter = Counter()
         counter_lock = threading.Lock()
 
         def process_dir(current_dir: Path):
@@ -106,13 +107,13 @@ class DirectoryHasher(FileHasher, HashRecorder):
                 if self._curr_dir_is_system_dir(current_dir):
                     self._logger.debug(f"Ignoring system directory {current_dir}")
                     with counter_lock:
-                        parent_counter += 1
-                        total_counter += 1
+                        parent_counter.increment()
+                        total_counter.increment()
                     return []
                 elif self._parent_is_system_dir(current_dir):
                     with counter_lock:
-                        child_counter += 1
-                        total_counter += 1
+                        child_counter.increment()
+                        total_counter.increment()
                     return []
 
             try:
@@ -152,9 +153,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
                     subdirs = future.result()
                     pending_dirs.extend(subdirs)
 
-        self._logger.info(f"Ignored a total of {total_counter: ,} directories,"
-                          f" including {parent_counter: ,} parent directories "
-                          f"and {child_counter: ,} child directories.")
+        self._logger.info(f"Ignored a total of {total_counter.value: ,} directories,"
+                          f" including {parent_counter.value: ,} parent directories "
+                          f"and {child_counter.value: ,} child directories.")
         
         yield from files_list
 
