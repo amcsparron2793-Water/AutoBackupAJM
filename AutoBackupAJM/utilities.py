@@ -1,3 +1,4 @@
+from enum import Enum
 from pathlib import Path
 from typing import Union
 
@@ -19,6 +20,13 @@ class Counter:
         return self._value
 
 
+class _ValidHasherCodes(Enum):
+    JJ = "jj"
+    JA = "ja"
+    AA = "aa"
+    JD = "jd"
+
+
 class _QuickTest:
     test_backup_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.json")
     test_new_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.zip")
@@ -29,9 +37,8 @@ class _QuickTest:
     test_target_dir = Path("~/Desktop/ArcMap and Pro Projects").expanduser()
     test_big_target_dir = Path("~/Desktop").expanduser()
 
-    # TODO: HASHER_CLASS_MAP = dict()
     HASHER_CLASS_MAP = {}
-    VALID_HASHER_TYPES = ["jj", "ja", "aa", "jd"]
+    VALID_HASHER_CODES = _ValidHasherCodes
 
     def __init__(self, hasher_type_code: str, **kwargs):
         self._jj = False
@@ -65,14 +72,14 @@ class _QuickTest:
 
     def _activate_type_code(self):
         setattr(self, f"_{self.hasher_type_code.lower()}", True)
-        activated_type_codes = [getattr(self, f"_{x}")
-                                for x in self.__class__.VALID_HASHER_TYPES
-                                if getattr(self, f"_{x}")]
+        activated_type_codes = [getattr(self, f"_{x.value}")
+                                for x in self.__class__.VALID_HASHER_CODES
+                                if getattr(self, f"_{x.value}")]
         if len(activated_type_codes) > 1:
             raise ValueError("Only one type_code can be active at a time")
         elif not activated_type_codes:
             raise ValueError("No valid type_code is active (must be one of: "
-                             f"{', '.join(self.__class__.VALID_HASHER_TYPES)})")
+                             f"{', '.join([x.value for x in self.__class__.VALID_HASHER_CODES])}")
 
     @property
     def class_to_use(self):
