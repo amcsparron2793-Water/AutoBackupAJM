@@ -6,6 +6,7 @@ from AutoBackupAJM import SetupLogger
 from AutoBackupAJM.Hasher.archive_hashers import ArchiveDirectoryHasher
 from AutoBackupAJM.Hasher.directory_hashers import DirectoryHasher
 from AutoBackupAJM.Hasher.mismatch_writer import MismatchWriter
+from AutoBackupAJM.utilities import _QuickTest
 
 
 class _BaseHashComparer(metaclass=ABCMeta):
@@ -319,8 +320,16 @@ class JsonToDirectoryComparer(_BaseHashComparer):
         return self.jj_hashcomp.compare()
 
 
+class _ComparersQT(_QuickTest):
+    HASHER_CLASS_MAP = {
+        "jj": JsonToJsonHashComparer,
+        "ja": JsonToArchiveComparer,
+        "aa": ArchiveToArchiveComparer,
+        "jd": JsonToDirectoryComparer
+    }
+
+
 if __name__ == '__main__':
-    from AutoBackupAJM.utilities import _QuickTest
-    qt = _QuickTest(jd=True, class_to_use=JsonToDirectoryComparer)
+    qt = _ComparersQT(hasher_type_code="jd", use_big=True)
     qt.get_hc()
     qt.compare_test()
