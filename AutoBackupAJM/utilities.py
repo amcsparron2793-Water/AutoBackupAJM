@@ -44,14 +44,14 @@ class _ValidHasherCodes(Enum):
 
 
 class _QuickTest:
-    test_backup_json = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.json")
-    test_new_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.zip")
-    test_other_zip = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
-    test_new_json = Path(MISC_PROJECT_DIR, "ArcMap and Pro Projects.json")
-    test_dir_json = Path(MISC_PROJECT_DIR, "ArcMap_and_Pro_Projects_Backup.json")
-    test_big_dir_json = Path(MISC_PROJECT_DIR, "Desktop_Backup.json")
-    test_target_dir = Path("~/Desktop/ArcMap and Pro Projects").expanduser()
-    test_big_target_dir = Path("~/Desktop").expanduser()
+    TEST_BACKUP_JSON = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.json")
+    TEST_NEW_ZIP = Path(MISC_PROJECT_DIR, "HostedFeatureStorage.zip")
+    TEST_OTHER_ZIP = Path(MISC_PROJECT_DIR, "HostedFeatureStorage_Other.zip")
+    TEST_NEW_JSON = Path(MISC_PROJECT_DIR, "ArcMap and Pro Projects.json")
+    TEST_DIR_JSON = Path(MISC_PROJECT_DIR, "ArcMap_and_Pro_Projects_Backup.json")
+    TEST_BIG_DIR_JSON = Path(MISC_PROJECT_DIR, "Desktop_Backup.json")
+    TEST_TARGET_DIR = Path("~/Desktop/ArcMap and Pro Projects").expanduser()
+    TEST_BIG_TARGET_DIR = Path("~/Desktop").expanduser()
 
     HASHER_CLASS_MAP = {}
     VALID_HASHER_CODES = _ValidHasherCodes
@@ -117,22 +117,22 @@ class _QuickTest:
     def get_hc(self, **kwargs):
         self.class_to_use = kwargs.pop("class_to_use", self.class_to_use)
         if self._jj:
-            self.hc = self.class_to_use(source_json=self.test_backup_json,
-                                        target_json=self.test_new_json,
+            self.hc = self.class_to_use(source_json=self.__class__.TEST_BACKUP_JSON,
+                                        target_json=self.__class__.TEST_NEW_JSON,
                                         # FIXME: setting source name like this doesnt seem to work?
                                         # source_name="totally_not_the_real_name",
                                         **kwargs)
         elif self._ja:
-            self.hc = self.class_to_use(source_json=self.test_backup_json,
-                                        archive_file=self.test_new_zip,
+            self.hc = self.class_to_use(source_json=self.__class__.TEST_BACKUP_JSON,
+                                        archive_file=self.__class__.TEST_NEW_ZIP,
                                         **kwargs)
         elif self._aa:
-            self.hc = self.class_to_use(source_archive_file=self.test_new_zip,
-                                        target_archive_file=self.test_other_zip,
+            self.hc = self.class_to_use(source_archive_file=self.__class__.TEST_NEW_ZIP,
+                                        target_archive_file=self.__class__.TEST_OTHER_ZIP,
                                         **kwargs)
         elif self._jd:
-            src_json = self.test_dir_json if not self._use_big else self.test_big_dir_json
-            target_dir = self.test_target_dir if not self._use_big else self.test_big_target_dir
+            src_json = self.__class__.TEST_DIR_JSON if not self._use_big else self.__class__.TEST_BIG_DIR_JSON
+            target_dir = self.__class__.TEST_TARGET_DIR if not self._use_big else self.__class__.TEST_BIG_TARGET_DIR
             self.hc = self.class_to_use(source_json=src_json,
                                         target_dir=target_dir,
                                         **kwargs)
