@@ -4,18 +4,34 @@ from AutoBackupAJM import MISC_PROJECT_DIR
 
 
 class Counter:
-    def __init__(self, start: int = 0):
+    def __init__(self, start: int = 0, **kwargs):
+        self.counter_name = kwargs.get("counter_name", "counter")
         self._value = start
 
     @property
     def value(self) -> int:
-        return self._value
+        if isinstance(self._value, int):
+            return self._value
+        else:
+            raise TypeError(f"value must be an integer, not {type(self._value)}")
+
+    @value.deleter
+    def value(self):
+        self._value = 0
 
     def increment(self, amount: int = 1) -> int:
+        if not isinstance(amount, int):
+            raise TypeError(f"amount must be an integer, not {type(amount)}")
         if amount < 0:
             raise ValueError("amount cannot be negative")
         self._value += amount
         return self._value
+
+    def __repr__(self):
+        return f"{self.counter_name}: {self.value}"
+
+    def __str__(self):
+        return f"{self.value: ,}"
 
 
 class _QuickTest:

@@ -68,7 +68,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
             yield from self._st_walk_directory(dir_path, **kwargs)
 
     def _st_walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
-        # TODO: HERE
         parent_counter = Counter()
         child_counter = Counter()
         total_counter = Counter()
@@ -83,9 +82,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
                 continue
 
             yield from self._gen_walk_full_dir_path(current_dir, files)
-        self._logger.info(f"Ignored a total of {total_counter: ,} directories,"
-                          f" including {parent_counter: ,} parent directories "
-                          f"and {child_counter: ,} child directories.")
+        self._logger.info(f"Ignored a total of {total_counter} directories,"
+                          f" including {parent_counter} parent directories "
+                          f"and {child_counter} child directories.")
 
     def _mt_walk_directory(self, dir_path: Path, **kwargs) -> Generator[Path, None, None]:
         max_workers = kwargs.get("max_workers", None)
@@ -93,7 +92,7 @@ class DirectoryHasher(FileHasher, HashRecorder):
 
         files_list = []
         files_lock = threading.Lock()
-        # TODO: HERE
+
         parent_counter = Counter()
         child_counter = Counter()
         total_counter = Counter()
@@ -153,9 +152,9 @@ class DirectoryHasher(FileHasher, HashRecorder):
                     subdirs = future.result()
                     pending_dirs.extend(subdirs)
 
-        self._logger.info(f"Ignored a total of {total_counter.value: ,} directories,"
-                          f" including {parent_counter.value: ,} parent directories "
-                          f"and {child_counter.value: ,} child directories.")
+        self._logger.info(f"Ignored a total of {total_counter} directories,"
+                          f" including {parent_counter} parent directories "
+                          f"and {child_counter} child directories.")
         
         yield from files_list
 
@@ -192,7 +191,6 @@ class DirectoryHasher(FileHasher, HashRecorder):
                            max_workers: Optional[int],
                            progress_bar: Optional[tqdm] = None,
                            **kwargs):
-        # TODO: make this work for self._get_files_with_count
         # Consume the iterable to get all file paths if we haven't already
         if not isinstance(fp_iterable, list):
             fp_list = list(fp_iterable)
