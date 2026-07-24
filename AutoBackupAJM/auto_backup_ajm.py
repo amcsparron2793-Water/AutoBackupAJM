@@ -12,6 +12,7 @@ except ImportError:
     from AutoBackupAJM._version import __version__
 
 from AutoBackupAJM import SetupLogger, MISC_PROJECT_DIR
+from AutoBackupAJM.Hasher.hash_comparers import ArchiveToArchiveComparer, JsonToDirectoryComparer
 
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -286,7 +287,25 @@ class AutoBackup:
                     raise FileExistsError(FEE_text)
 
 
+class NewHasherCompareAutoBackup(AutoBackup):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault('log_level_to_stream', 'DEBUG')
+        super().__init__(*args, **kwargs)
+        kwargs.setdefault('logger', self._logger)
+        # TODO: work on integration with JsonToDirectoryComparer
+        self.comparer = ArchiveToArchiveComparer(self.source_path, self.most_recent_backup_file[0], **kwargs)
+
+    @property
+    def source_changed_since_last_backup(self):
+        if self.most_recent_backup_file is None:
+            # if there isn't a backup at all, then no matter what a backup should be done
+            return True
+        return self.comparer.compare()
+
+
 if __name__ == "__main__":
-    ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
-                      Path(MISC_PROJECT_DIR/'test_backups'))
-    ABDB.backup()
+    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
+    NHAB.backup()
+    # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
+    #                   Path(MISC_PROJECT_DIR/'test_backups'))
+    # ABDB.backup()
