@@ -5,21 +5,24 @@ allows automated backup on a chosen schedule
 
 """
 import sys
+from logging import Logger
 
 try:
     from _version import __version__
 except ImportError:
     from AutoBackupAJM._version import __version__
 
-from AutoBackupAJM import SetupLogger, MISC_PROJECT_DIR
-from AutoBackupAJM.Hasher.hash_comparers import ArchiveToArchiveComparer, JsonToDirectoryComparer
+import questionary
+
+from EasyLoggerAJM import SetupLogger
+from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
+
+from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger
 
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Union, Optional
 from hashlib import md5
-
-import questionary
 
 
 # TODO: implement Hasher classes
@@ -45,9 +48,10 @@ class AutoBackup:
         self._backup_frequency = None
         self._backup_disabled = None
         self._backup_dir_path_root = None
-        kwargs.setdefault('log_level_to_stream', 'INFO')
-
-        self._logger = SetupLogger.setup_logger(**kwargs)
+        kwargs.setdefault('log_level_to_stream', 'WARNING')
+        SetupLogger.DEFAULT_CUSTOM_LOGGER = AutoBackupLogger
+        # noinspection PyTypeChecker
+        self._logger: Logger = SetupLogger.setup_logger(**kwargs)
 
         self.source_path = Path(source_path).resolve()
 
@@ -253,15 +257,20 @@ class AutoBackup:
             return False
         return True
 
-    def backup(self):
+    @property
+    def due_and_changed(self):
+        return self.due_for_backup and self.source_changed_since_last_backup
+
+    def backup(self, **kwargs):
         """
         Method to perform a backup of the data. Checks if the data is due for backup and if so,
         it copies the content of the database file to the full backup path.
         It then prints a success message with the full backup path.
         If the data is not due for backup, it prints a message indicating that no backup is necessary.
         """
+        self.force_backup = kwargs.get('force_backup', self.force_backup)
         if not self.backup_disabled:
-            if (self.due_for_backup and self.source_changed_since_last_backup) or self.force_backup:
+            if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
                 self.full_backup_path.write_bytes(self.source_path.read_bytes())
                 self._logger.info(f"Backup successful: {self.full_backup_path}")
@@ -289,11 +298,9 @@ class AutoBackup:
 
 class NewHasherCompareAutoBackup(AutoBackup):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('log_level_to_stream', 'DEBUG')
         super().__init__(*args, **kwargs)
         kwargs.setdefault('logger', self._logger)
-        # TODO: work on integration with JsonToDirectoryComparer
-        self.comparer = ArchiveToArchiveComparer(self.source_path, self.most_recent_backup_file[0], **kwargs)
+        self.comparer = ComparerFactory(self.source_path, self.most_recent_backup_file[0], **kwargs)
 
     @property
     def source_changed_since_last_backup(self):
@@ -305,7 +312,7 @@ class NewHasherCompareAutoBackup(AutoBackup):
 
 if __name__ == "__main__":
     NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
-    NHAB.backup()
+    NHAB.backup()#force_backup=True)
     # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
     #                   Path(MISC_PROJECT_DIR/'test_backups'))
     # ABDB.backup()

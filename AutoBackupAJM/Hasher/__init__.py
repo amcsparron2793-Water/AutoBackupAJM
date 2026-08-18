@@ -2,8 +2,6 @@ from logging import Logger
 from pathlib import Path
 from typing import Union
 
-from AutoBackupAJM import SetupLogger
-
 
 class _BaseHasher:
     DEFAULT_BUFFER_SIZE = 1024 ** 2  # 1MB - could be increased for faster hashing of larger files
