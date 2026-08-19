@@ -312,7 +312,10 @@ class NewHasherCompareAutoBackup(AutoBackup):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         kwargs.setdefault('logger', self._logger)
-        self.comparer = ComparerFactory(self.source_path, self.most_recent_backup_file[0], **kwargs)
+
+        print(self.backup_dir_path_root)  # usually ../Misc_Project_Files/test_backups
+        print(self.source_path)
+
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
 
@@ -337,7 +340,8 @@ class NewHasherCompareAutoBackup(AutoBackup):
 
 
 if __name__ == "__main__":
-    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
+    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage_Other'),
+                                      Path(MISC_PROJECT_DIR / 'test_backups'))
     NHAB.backup()#force_backup=True)
     # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
     #                   Path(MISC_PROJECT_DIR/'test_backups'))
