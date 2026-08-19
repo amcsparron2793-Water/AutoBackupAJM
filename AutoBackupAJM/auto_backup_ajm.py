@@ -35,7 +35,6 @@ from typing import Union, Optional
 from hashlib import md5
 
 
-# TODO: implement Hasher classes
 class AutoBackup:
     """
     Class to handle automated backup of a file.
@@ -58,10 +57,8 @@ class AutoBackup:
         self._backup_frequency = None
         self._backup_disabled = None
         self._backup_dir_path_root = None
-        kwargs.setdefault('log_level_to_stream', 'WARNING')
-        SetupLogger.DEFAULT_CUSTOM_LOGGER = AutoBackupLogger
-        # noinspection PyTypeChecker
-        self._logger: Union[Logger, _EasyLoggerCustomLogger] = SetupLogger.setup_logger(**kwargs)
+
+        self._logger = self._setup_logger(**kwargs)
 
         self.source_path = Path(source_path).resolve()
 
@@ -70,6 +67,16 @@ class AutoBackup:
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
         self.force_backup = kwargs.get('force_backup', False)
+
+    @staticmethod
+    def _setup_logger(**kwargs) -> Union[Logger, _EasyLoggerCustomLogger]:
+        setup_logger_class = kwargs.pop('setup_logger_class', SetupLogger)
+
+        kwargs.setdefault('log_level_to_stream', 'WARNING')
+
+        setup_logger_class.DEFAULT_CUSTOM_LOGGER = AutoBackupLogger
+        # noinspection PyTypeChecker
+        return setup_logger_class.setup_logger(**kwargs)
 
     def set_initial_properties_values(self, backup_dir_path_root, **kwargs):
         self.backup_disabled = kwargs.get('disable_backup', False)
@@ -245,21 +252,18 @@ class AutoBackup:
     @property
     def source_changed_since_last_backup(self):
         """
-        Indicates whether the database has changed since the last backup was made.
+        Indicates whether the file has changed since the last backup was made.
         If there is no previous backup, this property will be set to True.
-        If the database file's MD5 hash matches that of the most recent backup file's MD5 hash,
-         the property will be set to False, indicating that the database has not changed since the last backup.
+        If the file's MD5 hash matches that of the most recent backup file's MD5 hash,
+         the property will be set to False, indicating that the file has not changed since the last backup.
          By default, the property is True.
         """
-        # TODO: to be reworked with hasher.py implementation
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
 
         source_hash = md5(self.source_path.read_bytes()).hexdigest()
 
-        # TODO: if archive - unzip backup, hash contents, then compare??
-        # TODO: compare paths also for unchanged but moved files?
         backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
 
         if source_hash == backup_hash:
@@ -274,7 +278,7 @@ class AutoBackup:
     def backup(self, **kwargs):
         """
         Method to perform a backup of the data. Checks if the data is due for backup and if so,
-        it copies the content of the database file to the full backup path.
+        it copies the content of the file to the full backup path.
         It then prints a success message with the full backup path.
         If the data is not due for backup, it prints a message indicating that no backup is necessary.
         """
@@ -318,7 +322,8 @@ class NewHasherCompareAutoBackup(AutoBackup):
 
     def _get_comparer(self, comparer_class: Union['_BaseHashComparer', Type[ComparerFactory]], **kwargs):
         if not callable(comparer_class):
-            raise TypeError(f"comparer_class must be callable, {type(comparer_class)} does not have a __call__ method.")
+            raise TypeError(f"comparer_class must be callable, "
+                            f"{type(comparer_class)} does not have a __call__ method.")
         try:
             return comparer_class(self.source_path, self.most_recent_backup_file[0], **kwargs)
         except TypeError:
