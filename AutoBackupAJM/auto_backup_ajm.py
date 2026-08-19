@@ -5,6 +5,7 @@ allows automated backup on a chosen schedule
 
 """
 import sys
+from abc import ABCMeta, abstractmethod
 from logging import Logger
 
 
@@ -35,7 +36,7 @@ from typing import Union, Optional
 from hashlib import md5
 
 
-class AutoBackup:
+class _BaseAutoBackup(metaclass=ABCMeta):
     """
     Class to handle automated backup of a file.
 
@@ -68,8 +69,13 @@ class AutoBackup:
 
         self.force_backup = kwargs.get('force_backup', False)
 
+    @property
+    @abstractmethod
+    def source_changed_since_last_backup(self) -> bool:
+        ...
+
     @staticmethod
-    def _setup_logger(**kwargs) -> Union[Logger, _EasyLoggerCustomLogger]:
+    def _setup_logger(**kwargs) -> Union[Logger, '_EasyLoggerCustomLogger']:
         setup_logger_class = kwargs.pop('setup_logger_class', SetupLogger)
 
         kwargs.setdefault('log_level_to_stream', 'WARNING')
@@ -250,28 +256,6 @@ class AutoBackup:
         return False
 
     @property
-    def source_changed_since_last_backup(self):
-        """
-        Indicates whether the file has changed since the last backup was made.
-        If there is no previous backup, this property will be set to True.
-        If the file's MD5 hash matches that of the most recent backup file's MD5 hash,
-         the property will be set to False, indicating that the file has not changed since the last backup.
-         By default, the property is True.
-        """
-        if self.most_recent_backup_file is None:
-            # if there isn't a backup at all, then no matter what a backup should be done
-            return True
-
-        source_hash = md5(self.source_path.read_bytes()).hexdigest()
-
-        backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
-
-        if source_hash == backup_hash:
-            self._logger.debug("source has not changed since last backup")
-            return False
-        return True
-
-    @property
     def due_and_changed(self):
         return self.due_for_backup and self.source_changed_since_last_backup
 
@@ -310,13 +294,36 @@ class AutoBackup:
                     raise FileExistsError(FEE_text)
 
 
-class NewHasherCompareAutoBackup(AutoBackup):
+class BasicAutoBackup(_BaseAutoBackup):
+    @property
+    def source_changed_since_last_backup(self):
+        """
+        Indicates whether the file has changed since the last backup was made.
+        If there is no previous backup, this property will be set to True.
+        If the file's MD5 hash matches that of the most recent backup file's MD5 hash,
+         the property will be set to False, indicating that the file has not changed since the last backup.
+         By default, the property is True.
+        """
+        if self.most_recent_backup_file is None:
+            # if there isn't a backup at all, then no matter what a backup should be done
+            return True
+
+        source_hash = md5(self.source_path.read_bytes()).hexdigest()
+
+        backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
+
+        if source_hash == backup_hash:
+            self._logger.debug("source has not changed since last backup")
+            return False
+        return True
+
+
+class NewHasherCompareAutoBackup(_BaseAutoBackup):
     DEFAULT_COMPARER_CLASS = ComparerFactory
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         kwargs.setdefault('logger', self._logger)
-        self.comparer = ComparerFactory(self.source_path, self.most_recent_backup_file[0], **kwargs)
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
 
