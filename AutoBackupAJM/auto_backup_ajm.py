@@ -15,6 +15,12 @@ except ImportError:
 import questionary
 
 from EasyLoggerAJM import SetupLogger
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    # noinspection PyProtectedMember
+    from EasyLoggerAJM import _EasyLoggerCustomLogger
+
 from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger
@@ -51,7 +57,7 @@ class AutoBackup:
         kwargs.setdefault('log_level_to_stream', 'WARNING')
         SetupLogger.DEFAULT_CUSTOM_LOGGER = AutoBackupLogger
         # noinspection PyTypeChecker
-        self._logger: Logger = SetupLogger.setup_logger(**kwargs)
+        self._logger: Union[Logger, _EasyLoggerCustomLogger] = SetupLogger.setup_logger(**kwargs)
 
         self.source_path = Path(source_path).resolve()
 
@@ -187,7 +193,7 @@ class AutoBackup:
             ):
                 return True
         elif self.backup_frequency == 'daily':
-            if most_recent_datetime.date() != self.__class__.DATE_TODAY:
+            if most_recent_datetime.date() != self.__class__.DATE_TODAY.date():
                 return True
         elif self.backup_frequency == 'weekly':
             if most_recent_datetime.isocalendar()[1] != self.__class__.DATE_TODAY.isocalendar()[1]:
@@ -273,11 +279,11 @@ class AutoBackup:
             if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
                 self.full_backup_path.write_bytes(self.source_path.read_bytes())
-                self._logger.info(f"Backup successful: {self.full_backup_path}")
+                self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
             else:
-                self._logger.debug("No backup necessary")
+                self._logger.debug("No backup necessary", print_msg=True)
         else:
-            self._logger.warning('backup disabled!')
+            self._logger.warning('backup disabled!', print_msg=True)
 
     def _overwrite_protection_check(self):
         FEE_text = f"backups of {self.backup_name} seem to already exist in this directory"

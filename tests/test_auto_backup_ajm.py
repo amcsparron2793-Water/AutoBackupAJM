@@ -63,7 +63,7 @@ def test_due_for_backup_daily(mock_datetime, source_file, temp_dir):
     mock_datetime.now.return_value = fixed_today
 
     # We patch DATE_TODAY on the class
-    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today.date()):
+    with patch.object(AutoBackup, 'DATE_TODAY', fixed_today):
         ab = AutoBackup(source_file, temp_dir, backup_frequency='daily')
         # Ensure the instance also has the correct DATE_TODAY
         ab.DATE_TODAY = fixed_today
