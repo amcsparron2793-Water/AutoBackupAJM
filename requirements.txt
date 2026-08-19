@@ -6,4 +6,5 @@ pyproject_hooks==1.1.0
 
 questionary==2.1.1
 EasyLoggerAJM==1.9.9.2
+MultiHasherMatchAJM>=0.1a0
 tqdm

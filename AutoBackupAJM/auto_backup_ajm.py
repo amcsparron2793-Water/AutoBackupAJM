@@ -4,9 +4,15 @@ auto_backup_ajm.py
 allows automated backup on a chosen schedule
 
 """
-import sys
-from logging import Logger
+from typing import TYPE_CHECKING, Type, Union, Optional
 
+if TYPE_CHECKING:
+    from logging import Logger
+    # noinspection PyProtectedMember
+    from EasyLoggerAJM import _EasyLoggerCustomLogger
+    # noinspection PyProtectedMember
+    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
+    from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 try:
     from _version import __version__
@@ -16,22 +22,11 @@ except ImportError:
 import questionary
 
 from EasyLoggerAJM import SetupLogger
+from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger, CustomComparerFactory
 
-from typing import TYPE_CHECKING, Type
-
-if TYPE_CHECKING:
-    # noinspection PyProtectedMember
-    from EasyLoggerAJM import _EasyLoggerCustomLogger
-    # noinspection PyProtectedMember
-    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
-
-from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
-
-from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger
-
+import shutil
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Union, Optional
 from hashlib import md5
 
 
@@ -69,7 +64,7 @@ class AutoBackup:
         self.force_backup = kwargs.get('force_backup', False)
 
     @staticmethod
-    def _setup_logger(**kwargs) -> Union[Logger, _EasyLoggerCustomLogger]:
+    def _setup_logger(**kwargs) -> Union['Logger', '_EasyLoggerCustomLogger']:
         setup_logger_class = kwargs.pop('setup_logger_class', SetupLogger)
 
         kwargs.setdefault('log_level_to_stream', 'WARNING')
@@ -275,6 +270,14 @@ class AutoBackup:
     def due_and_changed(self):
         return self.due_for_backup and self.source_changed_since_last_backup
 
+    def _write_backup_bytes(self):
+        if self.source_path.is_file():
+            self.full_backup_path.write_bytes(self.source_path.read_bytes())
+        elif self.source_path.is_dir():
+            shutil.copytree(self.source_path, self.full_backup_path)
+        else:
+            raise FileNotFoundError(f"{self.source_path} does not exist")
+
     def backup(self, **kwargs):
         """
         Method to perform a backup of the data. Checks if the data is due for backup and if so,
@@ -286,8 +289,11 @@ class AutoBackup:
         if not self.backup_disabled:
             if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
-                self.full_backup_path.write_bytes(self.source_path.read_bytes())
-                self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
+                try:
+                    self._write_backup_bytes()
+                    self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
+                except Exception as e:
+                    self._logger.exception(f"Backup failed: {e}")
             else:
                 self._logger.debug("No backup necessary", print_msg=True)
         else:
@@ -311,22 +317,28 @@ class AutoBackup:
 
 
 class NewHasherCompareAutoBackup(AutoBackup):
-    DEFAULT_COMPARER_CLASS = ComparerFactory
+    DEFAULT_COMPARER_CLASS = CustomComparerFactory
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         kwargs.setdefault('logger', self._logger)
-        self.comparer = ComparerFactory(self.source_path, self.most_recent_backup_file[0], **kwargs)
+
+        print(self.backup_dir_path_root)  # usually ../Misc_Project_Files/test_backups
+        print(self.source_path)
+
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
 
-    def _get_comparer(self, comparer_class: Union['_BaseHashComparer', Type[ComparerFactory]], **kwargs):
+    def _get_comparer(self,
+                      comparer_class: Union['_BaseHashComparer', Type[CustomComparerFactory], Type['ComparerFactory']],
+                      **kwargs):
         if not callable(comparer_class):
             raise TypeError(f"comparer_class must be callable, "
                             f"{type(comparer_class)} does not have a __call__ method.")
         try:
             return comparer_class(self.source_path, self.most_recent_backup_file[0], **kwargs)
-        except TypeError:
+        except TypeError as e:
+            self._logger.warning(e)
             try:
                 return comparer_class(self.source_path, self.backup_dir_path_root, **kwargs)
             except ValueError as e:
@@ -342,7 +354,8 @@ class NewHasherCompareAutoBackup(AutoBackup):
 
 
 if __name__ == "__main__":
-    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
+    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'),
+                                      Path(MISC_PROJECT_DIR / 'test_backups'))
     NHAB.backup()#force_backup=True)
     # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
     #                   Path(MISC_PROJECT_DIR/'test_backups'))
