@@ -69,7 +69,7 @@ class AutoBackup:
         self.force_backup = kwargs.get('force_backup', False)
 
     @staticmethod
-    def _setup_logger(**kwargs) -> Union[Logger, _EasyLoggerCustomLogger]:
+    def _setup_logger(**kwargs) -> Union[Logger, '_EasyLoggerCustomLogger']:
         setup_logger_class = kwargs.pop('setup_logger_class', SetupLogger)
 
         kwargs.setdefault('log_level_to_stream', 'WARNING')

@@ -9,3 +9,4 @@ __pycache__
 /Misc_Project_Files/test*
 /Misc_Project_Files/*.json
 /Misc_Project_Files/HostedFeatureStorage_Other
+/Misc_Project_Files/HostedFeatureStorage
