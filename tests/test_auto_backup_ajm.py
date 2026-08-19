@@ -2,7 +2,7 @@
 import pytest
 from pathlib import Path
 from datetime import datetime, timedelta
-from AutoBackupAJM.auto_backup_ajm import BasicAutoBackup
+from AutoBackupAJM import BasicAutoBackup
 from unittest.mock import patch
 
 
