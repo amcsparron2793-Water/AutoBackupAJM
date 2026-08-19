@@ -17,8 +17,6 @@ class DirectoryToDirectoryComparer(JsonToDirectoryComparer, _BaseHashComparer):
         self.source_directory_hasher = DirectoryHasher(input_path=self.source_dir, **kwargs)
         self.target_dir = target_dir
 
-
-
         # noinspection PyTypeChecker
         JsonToDirectoryComparer.__init__(self, source_json=None if self.delay_hashing else self.source_directory_hash,
                                          target_dir=self.target_dir, **kwargs)
@@ -35,6 +33,7 @@ class DirectoryToDirectoryComparer(JsonToDirectoryComparer, _BaseHashComparer):
             self.jj_hashcomp.target_json = self.directory_hash
             self.delay_hashing = False
         return super().compare()
+
 
 if __name__ == '__main__':
     dtdc = DirectoryToDirectoryComparer(source_dir=Path(MISC_PROJECT_DIR / "HostedFeatureStorage_Other"),
