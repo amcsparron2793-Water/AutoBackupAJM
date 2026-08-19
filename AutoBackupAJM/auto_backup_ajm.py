@@ -37,19 +37,25 @@ from hashlib import md5
 
 
 class _BaseAutoBackup(metaclass=ABCMeta):
+    # noinspection GrazieStyle
     """
-    Class to handle automated backup of a file.
+        Abstract base class for implementing auto-backup functionality.
 
-    :ivar source_path: The path to the file to be backed up.
-    :ivar _backup_dir_path_root: The root directory path for storing backup files.
-    :ivar _backup_frequency: The frequency of the backup (daily, weekly, or monthly).
-    :ivar backup_name: The name of the backup file.
-    :ivar _backup_location: The path where the backup will be stored.
-    :ivar most_recent_backup_file: Information about the most recent backup file.
-    :ivar due_for_backup: Flag indicating if a new backup is due based on the backup frequency.
-    :ivar full_backup_path: The full path where the backup file will be saved.
+        This class provides a foundational framework for managing and configuring automated
+        backups. It includes properties and methods for handling backup frequencies, backup
+        locations, and tracking whether the source has changed since the last backup. Subclasses
+        should implement the abstract property `source_changed_since_last_backup` to define
+        specific logic for detecting changes to the source.
 
-    """
+        :ivar source_path: The resolved path to the source that will be backed up.
+        :type source_path: pathlib.Path
+        :ivar backup_name: The name of the backup file, which defaults to the stem and suffix of
+            the source path unless otherwise specified.
+        :type backup_name: str
+        :ivar force_backup: Flag indicating whether to forcibly create a backup regardless of other
+            conditions.
+        :type force_backup: bool
+        """
     DATE_TODAY: datetime = datetime.today()
     VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
     DEFAULT_BACKUP_FREQUENCY = 'daily'
@@ -72,6 +78,13 @@ class _BaseAutoBackup(metaclass=ABCMeta):
     @property
     @abstractmethod
     def source_changed_since_last_backup(self) -> bool:
+        """
+        Indicates whether the file has changed since the last backup was made.
+        If there is no previous backup, this property will be set to True.
+        If the file's MD5 hash matches that of the most recent backup file's MD5 hash,
+         the property will be set to False, indicating that the file has not changed since the last backup.
+         By default, the property is True.
+        """
         ...
 
     @staticmethod
@@ -295,15 +308,21 @@ class _BaseAutoBackup(metaclass=ABCMeta):
 
 
 class BasicAutoBackup(_BaseAutoBackup):
+    """
+    Automates the backup process by determining if the source has changed
+    since the last backup. It compares the hash of the source file to the
+    most recent backup file to detect changes.
+
+    :ivar most_recent_backup_file: The most recent backup file used for comparison.
+    :type most_recent_backup_file: Optional[List[pathlib.Path]]
+    :ivar source_path: The file path that is being monitored for changes.
+    :type source_path: pathlib.Path
+    :ivar _logger: Internal logger for debugging and tracing execution.
+    :type _logger: logging.Logger
+    """
     @property
     def source_changed_since_last_backup(self):
-        """
-        Indicates whether the file has changed since the last backup was made.
-        If there is no previous backup, this property will be set to True.
-        If the file's MD5 hash matches that of the most recent backup file's MD5 hash,
-         the property will be set to False, indicating that the file has not changed since the last backup.
-         By default, the property is True.
-        """
+
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
@@ -318,7 +337,21 @@ class BasicAutoBackup(_BaseAutoBackup):
         return True
 
 
-class NewHasherCompareAutoBackup(_BaseAutoBackup):
+class ExternalCompareAutoBackup(_BaseAutoBackup):
+    """
+    Compares the current state of files with the most recent backup state and determines if a backup is necessary.
+
+    This class specializes in utilizing an EXTERNAL comparer to evaluate whether the current source files have changed
+    since the last backup. Its primary purpose is to streamline the process of automated backups by avoiding
+    redundant operations when no changes are detected. The comparer used is either customized or default,
+    depending on the provided configuration.
+
+    :ivar DEFAULT_COMPARER_CLASS: The default class used to instantiate the comparer if no custom comparer
+        is provided.
+    :type DEFAULT_COMPARER_CLASS: Type[ComparerFactory]
+    :ivar comparer: The comparer instance used to evaluate changes between source files and backup files.
+    :type comparer: Union['_BaseHashComparer', Type[ComparerFactory]]
+    """
     DEFAULT_COMPARER_CLASS = ComparerFactory
 
     def __init__(self, *args, **kwargs):
@@ -349,8 +382,8 @@ class NewHasherCompareAutoBackup(_BaseAutoBackup):
 
 
 if __name__ == "__main__":
-    NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
-    NHAB.backup()#force_backup=True)
+    ECAB = ExternalCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'), MISC_PROJECT_DIR / 'test_backups')
+    ECAB.backup()#force_backup=True)
     # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
     #                   Path(MISC_PROJECT_DIR/'test_backups'))
     # ABDB.backup()
