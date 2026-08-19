@@ -7,6 +7,7 @@ allows automated backup on a chosen schedule
 import sys
 from logging import Logger
 
+
 try:
     from _version import __version__
 except ImportError:
@@ -16,10 +17,13 @@ import questionary
 
 from EasyLoggerAJM import SetupLogger
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Type
+
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from EasyLoggerAJM import _EasyLoggerCustomLogger
+    # noinspection PyProtectedMember
+    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
 
 from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
@@ -303,10 +307,26 @@ class AutoBackup:
 
 
 class NewHasherCompareAutoBackup(AutoBackup):
+    DEFAULT_COMPARER_CLASS = ComparerFactory
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         kwargs.setdefault('logger', self._logger)
         self.comparer = ComparerFactory(self.source_path, self.most_recent_backup_file[0], **kwargs)
+        kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
+        self.comparer = self._get_comparer(**kwargs)
+
+    def _get_comparer(self, comparer_class: Union['_BaseHashComparer', Type[ComparerFactory]], **kwargs):
+        if not callable(comparer_class):
+            raise TypeError(f"comparer_class must be callable, {type(comparer_class)} does not have a __call__ method.")
+        try:
+            return comparer_class(self.source_path, self.most_recent_backup_file[0], **kwargs)
+        except TypeError:
+            try:
+                return comparer_class(self.source_path, self.backup_dir_path_root, **kwargs)
+            except ValueError as e:
+                self._logger.exception(e)
+                exit(1)
 
     @property
     def source_changed_since_last_backup(self):
