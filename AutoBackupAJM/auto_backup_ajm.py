@@ -26,7 +26,119 @@ if TYPE_CHECKING:
     from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 
-class _BaseAutoBackup(metaclass=ABCMeta):
+class _IsDueForBackupMixin(metaclass=ABCMeta):
+    DATE_TODAY: datetime = None
+    VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
+    DEFAULT_BACKUP_FREQUENCY = 'daily'
+
+    def __init__(self):
+        self._backup_frequency = None
+        self.backup_name = None
+        self._logger = None
+
+    @abstractmethod
+    @property
+    def full_backup_path(self) -> Path:
+        ...
+
+    @abstractmethod
+    @property
+    def backup_dir_path_root(self):
+        ...
+
+    @abstractmethod
+    @backup_dir_path_root.setter
+    def backup_dir_path_root(self, value: Path):
+        ...
+
+    @property
+    def backup_frequency(self):
+        """
+        @property
+        backup_frequency(self)
+
+        This property method is used to retrieve the backup frequency of the object.
+        It checks if the provided backup frequency is within the valid backup frequencies list
+         and converts it to lowercase before returning the value. If the backup frequency is not valid,
+          it raises a ValueError with a message indicating the invalid backup frequency.
+        """
+        if self._backup_frequency:
+            self._backup_frequency = self._backup_frequency.lower()
+        return self._backup_frequency
+
+    @backup_frequency.setter
+    def backup_frequency(self, value: str):
+        if value.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
+            self._backup_frequency = value.lower()
+            self._logger.debug(f"Backup frequency set to {self._backup_frequency}")
+        else:
+            raise ValueError(f"Invalid backup frequency: {value.lower()}")
+
+    @property
+    def backup_is_recent(self):
+        """
+        @property
+        Check if a full backup was recent by verifying if the full backup path exists and
+         its creation time is within the last 2 minutes compared to the current time.
+        Returns True if the backup was recent, False otherwise.
+        """
+        recent_cutoff_delta_minutes = 2
+        backup_created_at = datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
+        recent_cutoff = (datetime.now() - timedelta(minutes=recent_cutoff_delta_minutes))
+        self._logger.debug(f"backup_created_at: {backup_created_at}, "
+                           f"recent_cutoff time: {recent_cutoff}, "
+                           f"recent_cutoff_delta: {recent_cutoff_delta_minutes}")
+        return backup_created_at > recent_cutoff
+
+    @property
+    def most_recent_backup_file(self) -> Optional[tuple[Path, float]]:
+        """
+        Returns the most recent backup file in the backup directory specified by backup_dir_path_root.
+
+        Returns:
+            Tuple containing the most recent backup file and its creation time, or None if no backup files are found.
+        """
+        file_create_times = [(file, file.stat().st_ctime)
+                             for file in self.backup_dir_path_root.rglob(self.backup_name)]
+        try:
+            return max(file_create_times, key=lambda x: x[1])
+        except ValueError:
+            return None
+
+    @property
+    def due_for_backup(self):
+        """
+        Check if a backup is due based on the backup file history and the backup frequency set.
+        Returns True if a backup is due, False otherwise.
+        """
+        # if there are no backup files then no matter what create them
+        if self.most_recent_backup_file is not None:
+            # noinspection PyTypeChecker
+            most_recent_datetime = datetime.fromtimestamp(self.most_recent_backup_file[1])
+        else:
+            return True
+        return self._is_due(most_recent_datetime)
+
+    def _is_due(self, most_recent_datetime: datetime):
+        if self.backup_frequency == 'hourly':
+            if (
+                    (most_recent_datetime.hour != self.__class__.DATE_TODAY.hour)
+                    and (most_recent_datetime.date() == self.__class__.DATE_TODAY.date())
+            ):
+                return True
+        elif self.backup_frequency == 'daily':
+            if most_recent_datetime.date() != self.__class__.DATE_TODAY.date():
+                return True
+        elif self.backup_frequency == 'weekly':
+            if most_recent_datetime.isocalendar()[1] != self.__class__.DATE_TODAY.isocalendar()[1]:
+                return True
+        elif self.backup_frequency == 'monthly':
+            if most_recent_datetime.month != self.__class__.DATE_TODAY.month:
+                return True
+        return False
+
+
+class _BaseAutoBackup(_IsDueForBackupMixin, metaclass=ABCMeta):
     # noinspection GrazieStyle
     """
         Abstract base class for implementing auto-backup functionality.
@@ -47,14 +159,12 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         :type force_backup: bool
     """
     DATE_TODAY: datetime = datetime.today()
-    VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
-    DEFAULT_BACKUP_FREQUENCY = 'daily'
 
     NON_HOURLY_DATE_FORMAT = '%m%d%Y'
     HOURLY_DATE_FORMAT = '%m%d%Y_%H00'
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
-        self._backup_frequency = None
+        super().__init__()
         self._backup_disabled = None
         self._backup_dir_path_root = None
 
@@ -104,29 +214,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         self._backup_disabled = value
 
     @property
-    def backup_frequency(self):
-        """
-        @property
-        backup_frequency(self)
-
-        This property method is used to retrieve the backup frequency of the object.
-        It checks if the provided backup frequency is within the valid backup frequencies list
-         and converts it to lowercase before returning the value. If the backup frequency is not valid,
-          it raises a ValueError with a message indicating the invalid backup frequency.
-        """
-        if self._backup_frequency:
-            self._backup_frequency = self._backup_frequency.lower()
-        return self._backup_frequency
-
-    @backup_frequency.setter
-    def backup_frequency(self, value: str):
-        if value.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
-            self._backup_frequency = value.lower()
-            self._logger.debug(f"Backup frequency set to {self._backup_frequency}")
-        else:
-            raise ValueError(f"Invalid backup frequency: {value.lower()}")
-
-    @property
     def backup_dir_path_root(self):
         """
         Property to get the root path for the backup directory. If the directory does not exist,
@@ -159,65 +246,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         backup_location.mkdir(parents=True, exist_ok=True)
 
         return backup_location
-
-    @property
-    def most_recent_backup_file(self) -> Optional[tuple[Path, float]]:
-        """
-        Returns the most recent backup file in the backup directory specified by backup_dir_path_root.
-
-        Returns:
-            Tuple containing the most recent backup file and its creation time, or None if no backup files are found.
-        """
-        file_create_times = [(file, file.stat().st_ctime) for file in self.backup_dir_path_root.rglob(self.backup_name)]
-        try:
-            return max(file_create_times, key=lambda x: x[1])
-        except ValueError:
-            return None
-
-    @property
-    def due_for_backup(self):
-        """
-        Check if a backup is due based on the backup file history and the backup frequency set.
-        Returns True if a backup is due, False otherwise.
-        """
-        # if there are no backup files then no matter what create them
-        if self.most_recent_backup_file is not None:
-            # noinspection PyTypeChecker
-            most_recent_datetime = datetime.fromtimestamp(self.most_recent_backup_file[1])
-        else:
-            return True
-        if self.backup_frequency == 'hourly':
-            if (
-                    (most_recent_datetime.hour != self.__class__.DATE_TODAY.hour)
-                    and (most_recent_datetime.date() == self.__class__.DATE_TODAY.date())
-            ):
-                return True
-        elif self.backup_frequency == 'daily':
-            if most_recent_datetime.date() != self.__class__.DATE_TODAY.date():
-                return True
-        elif self.backup_frequency == 'weekly':
-            if most_recent_datetime.isocalendar()[1] != self.__class__.DATE_TODAY.isocalendar()[1]:
-                return True
-        elif self.backup_frequency == 'monthly':
-            if most_recent_datetime.month != self.__class__.DATE_TODAY.month:
-                return True
-        return False
-
-    @property
-    def backup_is_recent(self):
-        """
-        @property
-        Check if a full backup was recent by verifying if the full backup path exists and
-         its creation time is within the last 2 minutes compared to the current time.
-        Returns True if the backup was recent, False otherwise.
-        """
-        recent_cutoff_delta_minutes = 2
-        backup_created_at = datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
-        recent_cutoff = (datetime.now() - timedelta(minutes=recent_cutoff_delta_minutes))
-        self._logger.debug(f"backup_created_at: {backup_created_at}, "
-                           f"recent_cutoff time: {recent_cutoff}, "
-                           f"recent_cutoff_delta: {recent_cutoff_delta_minutes}")
-        return backup_created_at > recent_cutoff
 
     @property
     def full_backup_path(self):
