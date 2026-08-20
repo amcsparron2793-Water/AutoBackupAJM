@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING, Type, Union, Optional
 from pathlib import Path
 from hashlib import md5
 
-from AutoBackupAJM import MISC_PROJECT_DIR, CustomComparerFactory
+from AutoBackupAJM import MISC_PROJECT_DIR
 from AutoBackupAJM._BaseAndMixins import _BaseAutoBackup
+
+from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
-    from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 
 class BasicAutoBackup(_BaseAutoBackup):
@@ -65,7 +66,7 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
     :ivar comparer: The comparer instance used to evaluate changes between source files and backup files.
     :type comparer: Union['_BaseHashComparer', Type[CustomComparerFactory], Type['ComparerFactory']]
     """
-    DEFAULT_COMPARER_CLASS = CustomComparerFactory
+    DEFAULT_COMPARER_CLASS = ComparerFactory
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__(source_path, backup_dir_path_root, **kwargs)
@@ -75,7 +76,7 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
         self.comparer = self._get_comparer(**kwargs)
 
     def _get_comparer(self,
-                      comparer_class: Union['_BaseHashComparer', Type[CustomComparerFactory], Type['ComparerFactory']],
+                      comparer_class: Union['_BaseHashComparer', Type['ComparerFactory']],
                       **kwargs):
         if not callable(comparer_class):
             raise TypeError(f"comparer_class must be callable, "
