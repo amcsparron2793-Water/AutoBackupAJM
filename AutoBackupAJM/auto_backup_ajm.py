@@ -6,6 +6,16 @@ allows automated backup on a chosen schedule
 """
 from typing import TYPE_CHECKING, Type, Union, Optional
 from abc import ABCMeta, abstractmethod
+import shutil
+from pathlib import Path
+from datetime import datetime, timedelta
+from hashlib import md5
+
+from EasyLoggerAJM import SetupLogger
+
+import questionary
+
+from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger, CustomComparerFactory
 
 if TYPE_CHECKING:
     from logging import Logger
@@ -14,21 +24,6 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
     from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
-
-try:
-    from _version import __version__
-except ImportError:
-    from AutoBackupAJM._version import __version__
-
-import questionary
-
-from EasyLoggerAJM import SetupLogger
-from AutoBackupAJM import MISC_PROJECT_DIR, AutoBackupLogger, CustomComparerFactory
-
-import shutil
-from pathlib import Path
-from datetime import datetime, timedelta
-from hashlib import md5
 
 
 class _BaseAutoBackup(metaclass=ABCMeta):
