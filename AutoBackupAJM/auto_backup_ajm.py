@@ -326,6 +326,7 @@ class BasicAutoBackup(_BaseAutoBackup):
     :ivar _logger: Internal logger for debugging and tracing execution.
     :type _logger: logging.Logger
     """
+
     @property
     def source_changed_since_last_backup(self):
 
@@ -354,11 +355,11 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
     :ivar DEFAULT_COMPARER_CLASS: The default class used to instantiate the comparer if no custom comparer
         is provided.
-    :type DEFAULT_COMPARER_CLASS: Type[ComparerFactory]
+    :type DEFAULT_COMPARER_CLASS: Type[CustomComparerFactory]
     :ivar comparer: The comparer instance used to evaluate changes between source files and backup files.
-    :type comparer: Union['_BaseHashComparer', Type[ComparerFactory]]
+    :type comparer: Union['_BaseHashComparer', Type[CustomComparerFactory], Type['ComparerFactory']]
     """
-    DEFAULT_COMPARER_CLASS = ComparerFactory
+    DEFAULT_COMPARER_CLASS = CustomComparerFactory
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__(source_path, backup_dir_path_root, **kwargs)
@@ -395,6 +396,6 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
 
 if __name__ == "__main__":
-    ECAB = ExternalCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'),
-                                      Path(MISC_PROJECT_DIR / 'test_backups'))
+    ECAB = ExternalCompareAutoBackup(Path(MISC_PROJECT_DIR / 'HostedFeatureStorage.zip'),
+                                     Path(MISC_PROJECT_DIR / 'test_backups'))
     ECAB.backup()  # force_backup=True)
