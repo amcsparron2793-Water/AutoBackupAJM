@@ -336,7 +336,9 @@ class BasicAutoBackup(_BaseAutoBackup):
 
         source_hash = md5(self.source_path.read_bytes()).hexdigest()
 
-        backup_hash = md5(self.most_recent_backup_file[0].read_bytes()).hexdigest()
+        # noinspection PyTypeChecker
+        most_recent_backup_file_path: Path = self.most_recent_backup_file[0]
+        backup_hash = md5(most_recent_backup_file_path.read_bytes()).hexdigest()
 
         if source_hash == backup_hash:
             self._logger.debug("source has not changed since last backup")
@@ -396,6 +398,6 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
 
 if __name__ == "__main__":
-    ECAB = ExternalCompareAutoBackup(Path(MISC_PROJECT_DIR / 'HostedFeatureStorage.zip'),
-                                     Path(MISC_PROJECT_DIR / 'test_backups'))
+    ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other'),
+                                     backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'))
     ECAB.backup()  # force_backup=True)
