@@ -129,6 +129,7 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
 
 class _MakeBackupDirPathRootMixin(metaclass=ABCMeta):
     def __init__(self):
+        super().__init__()
         self._backup_dir_path_root = None
         self._logger = None
         self._backup_disabled = None
