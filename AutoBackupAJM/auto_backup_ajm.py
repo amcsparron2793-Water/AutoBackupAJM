@@ -67,7 +67,7 @@ class _BaseAutoBackup(metaclass=ABCMeta):
 
         self.source_path = Path(source_path).resolve()
 
-        self.set_initial_properties_values(backup_dir_path_root, **kwargs)
+        self._set_initial_properties_values(backup_dir_path_root, **kwargs)
 
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
 
@@ -94,12 +94,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         setup_logger_class.DEFAULT_CUSTOM_LOGGER = AutoBackupLogger
         # noinspection PyTypeChecker
         return setup_logger_class.setup_logger(**kwargs)
-
-    def set_initial_properties_values(self, backup_dir_path_root, **kwargs):
-        self.backup_disabled = kwargs.get('disable_backup', False)
-        # _backup_dir_path_root is set directly so testing patch works
-        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
-        self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
 
     @property
     def backup_disabled(self):
@@ -136,23 +130,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
             self._logger.debug(f"Backup frequency set to {self._backup_frequency}")
         else:
             raise ValueError(f"Invalid backup frequency: {value.lower()}")
-
-    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
-        make = questionary.confirm(
-            f"{backup_dir_path_root} does not exist, would you like to create it?").ask()
-        if make:
-            return True
-        else:
-            self.backup_disabled = True
-            self._logger.error(f"{backup_dir_path_root} does not exist, and user declined to create it.")
-            return False
-
-    def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
-        try:
-            backup_dir_path_root.mkdir(parents=True, exist_ok=True)
-        except (OSError, FileNotFoundError) as e:
-            self._logger.warning(e)
-            self.backup_disabled = True
 
     @property
     def backup_dir_path_root(self):
@@ -280,6 +257,29 @@ class _BaseAutoBackup(metaclass=ABCMeta):
     def due_and_changed(self):
         return self.due_for_backup and self.source_changed_since_last_backup
 
+    def _set_initial_properties_values(self, backup_dir_path_root, **kwargs):
+        self.backup_disabled = kwargs.get('disable_backup', False)
+        # _backup_dir_path_root is set directly so testing patch works
+        self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
+        self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
+
+    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
+        make = questionary.confirm(
+            f"{backup_dir_path_root} does not exist, would you like to create it?").ask()
+        if make:
+            return True
+        else:
+            self.backup_disabled = True
+            self._logger.error(f"{backup_dir_path_root} does not exist, and user declined to create it.")
+            return False
+
+    def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
+        try:
+            backup_dir_path_root.mkdir(parents=True, exist_ok=True)
+        except (OSError, FileNotFoundError) as e:
+            self._logger.warning(e)
+            self.backup_disabled = True
+
     def _write_backup_bytes(self):
         if self.source_path.is_file():
             self.full_backup_path.write_bytes(self.source_path.read_bytes())
@@ -287,6 +287,22 @@ class _BaseAutoBackup(metaclass=ABCMeta):
             shutil.copytree(self.source_path, self.full_backup_path)
         else:
             raise FileNotFoundError(f"{self.source_path} does not exist")
+
+    def _overwrite_protection_check(self):
+        FEE_text = f"backups of {self.backup_name} seem to already exist in this directory"
+        overwrite_question_text = f'Do you wish to overwrite {self.backup_name}'
+
+        for f in self.backup_location.iterdir():
+            if f.name == self.backup_name:
+                if not self.force_backup:
+                    raise FileExistsError(FEE_text)
+                if self.force_backup and questionary.confirm(overwrite_question_text,
+                                                             default=False).ask():
+                    # FIXME: self.backup_success() doesn't detect this properly,
+                    #  but backup seems to work successfully
+                    pass
+                else:
+                    raise FileExistsError(FEE_text)
 
     def backup(self, **kwargs):
         """
@@ -308,22 +324,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
                 self._logger.debug("No backup necessary", print_msg=True)
         else:
             self._logger.warning('backup disabled!', print_msg=True)
-
-    def _overwrite_protection_check(self):
-        FEE_text = f"backups of {self.backup_name} seem to already exist in this directory"
-        overwrite_question_text = f'Do you wish to overwrite {self.backup_name}'
-
-        for f in self.backup_location.iterdir():
-            if f.name == self.backup_name:
-                if not self.force_backup:
-                    raise FileExistsError(FEE_text)
-                if self.force_backup and questionary.confirm(overwrite_question_text,
-                                                             default=False).ask():
-                    # FIXME: self.backup_success() doesn't detect this properly,
-                    #  but backup seems to work successfully
-                    pass
-                else:
-                    raise FileExistsError(FEE_text)
 
 
 class BasicAutoBackup(_BaseAutoBackup):
