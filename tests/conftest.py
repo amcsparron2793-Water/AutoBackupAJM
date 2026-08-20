@@ -1,7 +1,7 @@
 # noinspection PyPackageRequirements
 import pytest
 
-from AutoBackupAJM import SetupLogger
+from EasyLoggerAJM import SetupLogger
 
 
 @pytest.fixture(autouse=True)

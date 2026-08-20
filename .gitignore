@@ -8,5 +8,5 @@ __pycache__
 /Misc_Project_Files/HostedFeatureStorage*.zip
 /Misc_Project_Files/test*
 /Misc_Project_Files/*.json
-
-test_backups/
+/Misc_Project_Files/HostedFeatureStorage_Other
+/Misc_Project_Files/HostedFeatureStorage
