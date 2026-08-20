@@ -36,18 +36,18 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         self.backup_name = None
         self._logger = None
 
-    @abstractmethod
     @property
+    @abstractmethod
     def full_backup_path(self) -> Path:
         ...
 
-    @abstractmethod
     @property
+    @abstractmethod
     def backup_dir_path_root(self):
         ...
 
-    @abstractmethod
     @backup_dir_path_root.setter
+    @abstractmethod
     def backup_dir_path_root(self, value: Path):
         ...
 
@@ -138,7 +138,60 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         return False
 
 
-class _BaseAutoBackup(_IsDueForBackupMixin, metaclass=ABCMeta):
+class _MakeBackupDirPathRootMixin(metaclass=ABCMeta):
+    def __init__(self):
+        self._backup_dir_path_root = None
+        self._logger = None
+        self._backup_disabled = None
+
+    @property
+    @abstractmethod
+    def backup_disabled(self):
+        ...
+
+    @backup_disabled.setter
+    @abstractmethod
+    def backup_disabled(self, value):
+        ...
+
+    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
+        make = questionary.confirm(
+            f"{backup_dir_path_root} does not exist, would you like to create it?").ask()
+        if make:
+            return True
+        else:
+            self.backup_disabled = True
+            self._logger.error(f"{backup_dir_path_root} does not exist, and user declined to create it.")
+            return False
+
+    def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
+        try:
+            backup_dir_path_root.mkdir(parents=True, exist_ok=True)
+        except (OSError, FileNotFoundError) as e:
+            self._logger.warning(e)
+            self.backup_disabled = True
+
+    @property
+    def backup_dir_path_root(self):
+        """
+        Property to get the root path for the backup directory. If the directory does not exist,
+        it prompts the user to confirm the creation of the directory before returning the path.
+        """
+        return self._backup_dir_path_root
+
+    @backup_dir_path_root.setter
+    def backup_dir_path_root(self, value: Path):
+        value = Path(value).resolve()
+        self._backup_dir_path_root = value
+
+        if value.is_dir():
+            return
+
+        if self._make_backup_dir_path_root_question(value):
+            self._make_backup_dir_path_root(value)
+
+
+class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metaclass=ABCMeta):
     # noinspection GrazieStyle
     """
         Abstract base class for implementing auto-backup functionality.
@@ -166,7 +219,6 @@ class _BaseAutoBackup(_IsDueForBackupMixin, metaclass=ABCMeta):
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__()
         self._backup_disabled = None
-        self._backup_dir_path_root = None
 
         self._logger = self._setup_logger(**kwargs)
 
@@ -212,25 +264,6 @@ class _BaseAutoBackup(_IsDueForBackupMixin, metaclass=ABCMeta):
             else:
                 self._logger.info('backup enabled!')
         self._backup_disabled = value
-
-    @property
-    def backup_dir_path_root(self):
-        """
-        Property to get the root path for the backup directory. If the directory does not exist,
-        it prompts the user to confirm the creation of the directory before returning the path.
-        """
-        return self._backup_dir_path_root
-
-    @backup_dir_path_root.setter
-    def backup_dir_path_root(self, value: Path):
-        value = Path(value).resolve()
-        self._backup_dir_path_root = value
-
-        if value.is_dir():
-            return
-
-        if self._make_backup_dir_path_root_question(value):
-            self._make_backup_dir_path_root(value)
 
     @property
     def backup_location(self):
@@ -285,23 +318,6 @@ class _BaseAutoBackup(_IsDueForBackupMixin, metaclass=ABCMeta):
         # _backup_dir_path_root is set directly so testing patch works
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
         self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
-
-    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
-        make = questionary.confirm(
-            f"{backup_dir_path_root} does not exist, would you like to create it?").ask()
-        if make:
-            return True
-        else:
-            self.backup_disabled = True
-            self._logger.error(f"{backup_dir_path_root} does not exist, and user declined to create it.")
-            return False
-
-    def _make_backup_dir_path_root(self, backup_dir_path_root: Path):
-        try:
-            backup_dir_path_root.mkdir(parents=True, exist_ok=True)
-        except (OSError, FileNotFoundError) as e:
-            self._logger.warning(e)
-            self.backup_disabled = True
 
     def _write_backup_bytes(self):
         if self.source_path.is_file():
