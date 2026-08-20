@@ -111,7 +111,7 @@ class AutoBackup:
     def backup_frequency(self, value: str):
         if value.lower() in self.__class__.VALID_BACKUP_FREQUENCIES:
             self._backup_frequency = value.lower()
-            self._logger.info(f"Backup frequency set to {self._backup_frequency}")
+            self._logger.debug(f"Backup frequency set to {self._backup_frequency}")
         else:
             raise ValueError(f"Invalid backup frequency: {value.lower()}")
 
@@ -319,12 +319,9 @@ class AutoBackup:
 class NewHasherCompareAutoBackup(AutoBackup):
     DEFAULT_COMPARER_CLASS = CustomComparerFactory
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
+        super().__init__(source_path, backup_dir_path_root, **kwargs)
         kwargs.setdefault('logger', self._logger)
-
-        print(self.backup_dir_path_root)  # usually ../Misc_Project_Files/test_backups
-        print(self.source_path)
 
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
@@ -350,13 +347,13 @@ class NewHasherCompareAutoBackup(AutoBackup):
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
-        return self.comparer.compare()
+        # comparer returns True if the hashes match,
+        # since we want to check if the hashes DON'T match,
+        # we need to return the inverse
+        return not self.comparer.compare()
 
 
 if __name__ == "__main__":
     NHAB = NewHasherCompareAutoBackup(Path(MISC_PROJECT_DIR/'HostedFeatureStorage.zip'),
                                       Path(MISC_PROJECT_DIR / 'test_backups'))
-    NHAB.backup()#force_backup=True)
-    # ABDB = AutoBackup(Path(MISC_PROJECT_DIR/'test_file.txt'),
-    #                   Path(MISC_PROJECT_DIR/'test_backups'))
-    # ABDB.backup()
+    NHAB.backup()  # force_backup=True)
