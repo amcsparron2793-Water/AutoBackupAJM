@@ -204,13 +204,6 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         return False
 
     @property
-    def full_backup_path(self):
-        """
-        This method returns the full path for the backup by combining the backup location and backup name provided.
-        """
-        return self.backup_location / self.backup_name
-
-    @property
     def backup_is_recent(self):
         """
         @property
@@ -225,6 +218,13 @@ class _BaseAutoBackup(metaclass=ABCMeta):
                            f"recent_cutoff time: {recent_cutoff}, "
                            f"recent_cutoff_delta: {recent_cutoff_delta_minutes}")
         return backup_created_at > recent_cutoff
+
+    @property
+    def full_backup_path(self):
+        """
+        This method returns the full path for the backup by combining the backup location and backup name provided.
+        """
+        return self.backup_location / self.backup_name
 
     @property
     def backup_successful(self):
