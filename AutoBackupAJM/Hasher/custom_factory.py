@@ -2,7 +2,7 @@ from logging import Logger
 from typing import Any, Union
 
 from EasyLoggerAJM import SetupLogger
-from MultiHasherMatchAJM.MatchAndRecord.factory import ComparerFactory
+from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 from .custom_comparers import DirectoryToDirectoryComparer
 
 
@@ -23,7 +23,7 @@ class CustomComparerFactory(ComparerFactory):
 
     @staticmethod
     def _setup_logger(**kwargs) -> Union[Logger]:
-        from AutoBackupAJM.auto_backup_ajm import AutoBackupLogger
+        from .. import AutoBackupLogger
         setup_logger_class = kwargs.pop('setup_logger_class', SetupLogger)
 
         kwargs.setdefault('log_level_to_stream', 'WARNING')

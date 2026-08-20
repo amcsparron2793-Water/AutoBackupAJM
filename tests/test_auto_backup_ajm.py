@@ -52,7 +52,7 @@ def test_source_changed_since_last_backup(source_file, temp_dir):
     assert ab.source_changed_since_last_backup is True
 
 
-@patch('AutoBackupAJM.auto_backup_ajm.datetime')
+@patch('AutoBackupAJM._BaseAndMixins.datetime')
 def test_due_for_backup_daily(mock_datetime, source_file, temp_dir):
     # Fixed datetime mock and ensured DATE_TODAY is controlled
     fixed_today = datetime(2023, 1, 1)
@@ -175,7 +175,7 @@ def test_backup_dir_path_root_denied(mock_confirm, source_file, tmp_path):
     assert not new_root.exists()
 
 
-@patch('AutoBackupAJM.auto_backup_ajm.datetime')
+@patch('AutoBackupAJM._BaseAndMixins.datetime')
 def test_due_for_backup_weekly(mock_datetime, source_file, temp_dir):
     fixed_today = datetime(2023, 1, 10)  # Tuesday, Week 2
     mock_datetime.today.return_value = fixed_today
@@ -196,7 +196,7 @@ def test_due_for_backup_weekly(mock_datetime, source_file, temp_dir):
             assert ab.due_for_backup is False
 
 
-@patch('AutoBackupAJM.auto_backup_ajm.datetime')
+@patch('AutoBackupAJM._BaseAndMixins.datetime')
 def test_due_for_backup_monthly(mock_datetime, source_file, temp_dir):
     fixed_today = datetime(2023, 2, 1)  # February
     mock_datetime.today.return_value = fixed_today
