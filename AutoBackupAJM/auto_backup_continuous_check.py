@@ -2,12 +2,12 @@ from pathlib import Path
 from time import sleep
 from typing import Union
 
-from AutoBackupAJM import AutoBackup
+from AutoBackupAJM import BasicAutoBackup
 
 
 # TODO: use the_sandman for sleeping?
 # TODO: refresh DATE_TODAY every hour for continuous?
-class AutoBackupContinuousCheck(AutoBackup):
+class AutoBackupContinuousCheck(BasicAutoBackup):
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__(source_path, backup_dir_path_root, **kwargs)
         self.not_due_notified = False
