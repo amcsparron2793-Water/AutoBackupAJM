@@ -50,10 +50,13 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         :ivar force_backup: Flag indicating whether to forcibly create a backup regardless of other
             conditions.
         :type force_backup: bool
-        """
+    """
     DATE_TODAY: datetime = datetime.today()
     VALID_BACKUP_FREQUENCIES = ['hourly', 'daily', 'weekly', 'monthly']
     DEFAULT_BACKUP_FREQUENCY = 'daily'
+
+    NON_HOURLY_DATE_FORMAT = '%m%d%Y'
+    HOURLY_DATE_FORMAT = '%m%d%Y_%H00'
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         self._backup_frequency = None
@@ -176,9 +179,9 @@ class _BaseAutoBackup(metaclass=ABCMeta):
         Returns the backup location where backups will be stored.
         """
         if self.backup_frequency != 'hourly':
-            date_dir = Path(self.__class__.DATE_TODAY.strftime('%m%d%Y'))
+            date_dir = Path(self.__class__.DATE_TODAY.strftime(self.__class__.NON_HOURLY_DATE_FORMAT))
         else:
-            date_dir = Path(self.__class__.DATE_TODAY.strftime('%m%d%Y_%H00'))
+            date_dir = Path(self.__class__.DATE_TODAY.strftime(self.__class__.HOURLY_DATE_FORMAT))
 
         backup_location = self.backup_dir_path_root / date_dir
         backup_location.mkdir(parents=True, exist_ok=True)
@@ -237,8 +240,18 @@ class _BaseAutoBackup(metaclass=ABCMeta):
 
     @property
     def backup_is_recent(self):
+        """
+        @property
+        Check if a full backup was recent by verifying if the full backup path exists and
+         its creation time is within the last 2 minutes compared to the current time.
+        Returns True if the backup was recent, False otherwise.
+        """
+        recent_cutoff_delta_minutes = 2
         backup_created_at = datetime.fromtimestamp(self.full_backup_path.stat().st_ctime)
-        recent_cutoff = (datetime.now() - timedelta(minutes=2))
+        recent_cutoff = (datetime.now() - timedelta(minutes=recent_cutoff_delta_minutes))
+        self._logger.debug(f"backup_created_at: {backup_created_at}, "
+                           f"recent_cutoff time: {recent_cutoff}, "
+                           f"recent_cutoff_delta: {recent_cutoff_delta_minutes}")
         return backup_created_at > recent_cutoff
 
     @property
