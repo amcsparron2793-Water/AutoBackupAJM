@@ -1,8 +1,10 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock, PropertyMock
+
+from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
+
 from AutoBackupAJM.auto_backup_ajm import ExternalCompareAutoBackup, BasicAutoBackup
-from AutoBackupAJM.Hasher.custom_factory import CustomComparerFactory
 
 
 @pytest.fixture
@@ -25,7 +27,7 @@ class TestExternalCompareAutoBackup:
         ecab = ExternalCompareAutoBackup(source_path=source_dir, backup_dir_path_root=backup_root)
         assert ecab.source_path == source_dir.resolve()
         assert ecab.backup_dir_path_root == backup_root.resolve()
-        assert isinstance(ecab.comparer, CustomComparerFactory._DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS)
+        assert isinstance(ecab.comparer, ComparerFactory._DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS)
 
     def test_source_changed_since_last_backup_no_backup(self, source_dir, backup_root):
         ecab = ExternalCompareAutoBackup(source_path=source_dir, backup_dir_path_root=backup_root)

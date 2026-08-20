@@ -16,7 +16,6 @@ def find_project_root(start: Optional[Path] = None, **kwargs) -> Path:
 PROJECT_ROOT = find_project_root()
 MISC_PROJECT_DIR = PROJECT_ROOT / "Misc_Project_Files"
 
-#from AutoBackupAJM.Hasher.custom_factory import CustomComparerFactory
 from AutoBackupAJM.auto_backup_logger import AutoBackupLogger
 from AutoBackupAJM.auto_backup_ajm import BasicAutoBackup, ExternalCompareAutoBackup
 
