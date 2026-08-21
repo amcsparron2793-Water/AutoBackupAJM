@@ -6,14 +6,10 @@ from AutoBackupAJM import PROJECT_ROOT
 from ColorizerAJM import Colorizer
 
 
-class _AutoBackupColorizer(Colorizer):
-    pass
-
-
 class _AutoBackupCustomLogger(_EasyLoggerCustomLogger):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.colorizer = _AutoBackupColorizer()
+        self.colorizer = Colorizer()
 
     def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs):
         """
@@ -45,11 +41,15 @@ class _AutoBackupCustomLogger(_EasyLoggerCustomLogger):
                      extra=extra, stack_info=stack_info,
                      **kwargs)
 
-    def _print_msg(self, msg, **kwargs):
+    def _format_printed_msg_color(self, msg, **kwargs):
         print_in_color = kwargs.pop('print_in_color', False)
         color_to_print = kwargs.pop('color_to_print', None)
         if print_in_color:
             msg = self.colorizer.colorize(msg, color=color_to_print)
+        return msg
+
+    def _print_msg(self, msg, **kwargs):
+        msg = self._format_printed_msg_color(msg, **kwargs)
         super()._print_msg(msg, **kwargs)
 
 
