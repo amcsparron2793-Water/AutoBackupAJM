@@ -319,8 +319,9 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
             return [self.source_path]
         elif self.source_path.is_dir():
             self._logger.debug(f"Getting files to copy from dir: {self.source_path}")
-            # TODO: progress bar here also.
-            return [f for f in self.source_path.rglob('*') if f.is_file()]
+            x = tqdm([f for f in self.source_path.rglob('*') if f.is_file()],
+                     desc=f"Getting files to copy from dir: {self.source_path.name}")
+            return list(x)
         return []
 
     def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None):
@@ -332,6 +333,7 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
             if progress_bar:
                 def copy_with_progress(src, dst, *, follow_symlinks=True):
                     shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                    # noinspection PyUnresolvedReferences
                     progress_bar.update(1)
 
                 shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
