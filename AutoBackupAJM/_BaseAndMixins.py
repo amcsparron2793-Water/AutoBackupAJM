@@ -2,9 +2,10 @@ import shutil
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING, List
 
 import questionary
+from tqdm import tqdm
 from EasyLoggerAJM import SetupLogger
 
 from AutoBackupAJM import AutoBackupLogger
@@ -313,11 +314,29 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
         self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
 
-    def _write_backup_bytes(self):
+    def _get_files_to_copy(self) -> List[Path]:
         if self.source_path.is_file():
-            self.full_backup_path.write_bytes(self.source_path.read_bytes())
+            return [self.source_path]
         elif self.source_path.is_dir():
-            shutil.copytree(self.source_path, self.full_backup_path)
+            self._logger.debug(f"Getting files to copy from dir: {self.source_path}")
+            # TODO: progress bar here also.
+            return [f for f in self.source_path.rglob('*') if f.is_file()]
+        return []
+
+    def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None):
+        if self.source_path.is_file():
+            shutil.copy2(self.source_path, self.full_backup_path)
+            if progress_bar:
+                progress_bar.update(1)
+        elif self.source_path.is_dir():
+            if progress_bar:
+                def copy_with_progress(src, dst, *, follow_symlinks=True):
+                    shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                    progress_bar.update(1)
+
+                shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
+            else:
+                shutil.copytree(self.source_path, self.full_backup_path)
         else:
             raise FileNotFoundError(f"{self.source_path} does not exist")
 
@@ -345,13 +364,27 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
         If the data is not due for backup, it prints a message indicating that no backup is necessary.
         """
         self.force_backup = kwargs.get('force_backup', self.force_backup)
+        use_progress_bar = kwargs.get('use_progress_bar', True)
+        progress_bar = None
+
         if not self.backup_disabled:
             if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
+
+                if use_progress_bar:
+                    files_to_copy = self._get_files_to_copy()
+                    progress_bar = tqdm(total=len(files_to_copy),
+                                        desc=f"Backing up {self.source_path.name}",
+                                        unit="file")
+
                 try:
-                    self._write_backup_bytes()
+                    self._write_backup_bytes(progress_bar=progress_bar)
+                    if progress_bar:
+                        progress_bar.close()
                     self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
                 except Exception as e:
+                    if progress_bar:
+                        progress_bar.close()
                     self._logger.exception(f"Backup failed: {e}")
             else:
                 self._logger.debug("No backup necessary", print_msg=True)
