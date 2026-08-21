@@ -344,16 +344,19 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
         It then prints a success message with the full backup path.
         If the data is not due for backup, it prints a message indicating that no backup is necessary.
         """
-        self.force_backup = kwargs.get('force_backup', self.force_backup)
+        self.force_backup = kwargs.pop('force_backup', self.force_backup)
+        kwargs.setdefault('print_msg', True)
+        kwargs.setdefault('print_in_color', True)
+
         if not self.backup_disabled:
             if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
                 try:
                     self._write_backup_bytes()
-                    self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
+                    self._logger.info(f"Backup successful: {self.full_backup_path}", **kwargs, color_to_print='green')
                 except Exception as e:
                     self._logger.exception(f"Backup failed: {e}")
             else:
-                self._logger.debug("No backup necessary", print_msg=True)
+                self._logger.debug("No backup necessary", **kwargs, color_to_print='yellow')
         else:
-            self._logger.warning('backup disabled!', print_msg=True)
+            self._logger.warning('backup disabled!', **kwargs, color_to_print='red')
