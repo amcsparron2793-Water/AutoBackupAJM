@@ -214,7 +214,6 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__()
         self._backup_disabled = None
-
         self._logger = self._setup_logger(**kwargs)
 
         self.source_path = Path(source_path).resolve()
@@ -222,7 +221,6 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
         self._set_initial_properties_values(backup_dir_path_root, **kwargs)
 
         self.backup_name = kwargs.get('backup_name', f'{self.source_path.stem}{self.source_path.suffix}')
-
         self.force_backup = kwargs.get('force_backup', False)
 
     @property
@@ -324,23 +322,38 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
             return list(x)
         return []
 
+    def _write_backup_bytes_for_file(self, progress_bar: Optional[tqdm] = None):
+        shutil.copy2(self.source_path, self.full_backup_path)
+        if progress_bar:
+            progress_bar.update(1)
+
+    def _write_backup_bytes_for_dir(self, progress_bar: Optional[tqdm] = None):
+        if progress_bar:
+            def copy_with_progress(src, dst, *, follow_symlinks=True):
+                shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                # noinspection PyUnresolvedReferences
+                progress_bar.update(1)
+
+            shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
+        else:
+            shutil.copytree(self.source_path, self.full_backup_path)
+
     def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None):
         if self.source_path.is_file():
-            shutil.copy2(self.source_path, self.full_backup_path)
-            if progress_bar:
-                progress_bar.update(1)
+            self._write_backup_bytes_for_file(progress_bar)
         elif self.source_path.is_dir():
-            if progress_bar:
-                def copy_with_progress(src, dst, *, follow_symlinks=True):
-                    shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
-                    # noinspection PyUnresolvedReferences
-                    progress_bar.update(1)
-
-                shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
-            else:
-                shutil.copytree(self.source_path, self.full_backup_path)
+            self._write_backup_bytes_for_dir(progress_bar)
         else:
             raise FileNotFoundError(f"{self.source_path} does not exist")
+
+    def _get_backup_progress_bar(self, use_progress_bar: bool) -> Optional[tqdm]:
+        progress_bar = None
+        if use_progress_bar:
+            files_to_copy = self._get_files_to_copy()
+            progress_bar = tqdm(total=len(files_to_copy),
+                                desc=f"Backing up {self.source_path.name}",
+                                unit="file")
+        return progress_bar
 
     def _overwrite_protection_check(self):
         FEE_text = f"backups of {self.backup_name} seem to already exist in this directory"
@@ -367,17 +380,12 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin, _IsDueForBackupMixin, metacla
         """
         self.force_backup = kwargs.get('force_backup', self.force_backup)
         use_progress_bar = kwargs.get('use_progress_bar', True)
-        progress_bar = None
 
         if not self.backup_disabled:
             if self.due_and_changed or self.force_backup:
                 self._overwrite_protection_check()
 
-                if use_progress_bar:
-                    files_to_copy = self._get_files_to_copy()
-                    progress_bar = tqdm(total=len(files_to_copy),
-                                        desc=f"Backing up {self.source_path.name}",
-                                        unit="file")
+                progress_bar = self._get_backup_progress_bar(use_progress_bar)
 
                 try:
                     self._write_backup_bytes(progress_bar=progress_bar)
