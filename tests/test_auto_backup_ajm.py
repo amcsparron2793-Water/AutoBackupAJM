@@ -216,6 +216,7 @@ def test_due_for_backup_monthly(mock_datetime, source_file, temp_dir):
         with patch.object(BasicAutoBackup, 'most_recent_backup_file', (Path('fake'), feb_date.timestamp())):
             assert ab.due_for_backup is False
 
+
 def test_backup_is_recent(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
     # No backup yet, so full_backup_path doesn't exist, stat() fails.
@@ -223,6 +224,7 @@ def test_backup_is_recent(source_file, temp_dir):
     # Let's just test the successful case for now.
     ab.backup()
     assert ab.backup_is_recent is True
+
 
 def test_backup_location_creation(source_file, tmp_path):
     root = tmp_path / "backups"
@@ -239,24 +241,26 @@ def test_backup_location_creation(source_file, tmp_path):
         assert loc.parent == root.resolve()
         assert loc.exists()
 
+
 @patch('AutoBackupAJM._BaseAndMixins.datetime')
 def test_due_for_backup_hourly(mock_datetime, source_file, temp_dir):
     fixed_today = datetime(2023, 1, 1, 12, 0)
     mock_datetime.today.return_value = fixed_today
     mock_datetime.fromtimestamp.side_effect = lambda ts: datetime.fromtimestamp(ts)
-    
+
     with patch.object(BasicAutoBackup, 'DATE_TODAY', fixed_today):
         ab = BasicAutoBackup(source_file, temp_dir, backup_frequency='hourly')
         ab.DATE_TODAY = fixed_today
-        
+
         # Same hour
         with patch.object(BasicAutoBackup, 'most_recent_backup_file', (Path('fake'), fixed_today.timestamp())):
             assert ab.due_for_backup is False
-            
+
         # Different hour
         diff_hour = fixed_today - timedelta(hours=1)
         with patch.object(BasicAutoBackup, 'most_recent_backup_file', (Path('fake'), diff_hour.timestamp())):
             assert ab.due_for_backup is True
+
 
 def test_backup_location_hourly(source_file, temp_dir):
     fixed_today = datetime(2023, 1, 1, 12, 0)
@@ -265,15 +269,18 @@ def test_backup_location_hourly(source_file, temp_dir):
         expected_subdir = fixed_today.strftime('%m%d%Y_%H00')
         assert ab.backup_location == temp_dir / expected_subdir
 
+
 def test_backup_successful_disabled(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir, disable_backup=True)
     assert ab.backup_successful is False
+
 
 def test_write_backup_bytes_error(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
     ab.source_path = Path("non_existent_file")
     with pytest.raises(FileNotFoundError):
         ab._write_backup_bytes()
+
 
 def test_backup_no_backup_necessary(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
@@ -285,6 +292,7 @@ def test_backup_no_backup_necessary(source_file, temp_dir):
             ab.backup()
             mock_debug.assert_called_with("No backup necessary", print_msg=True)
 
+
 def test_source_path_setter(source_file, temp_dir, tmp_path):
     ab = BasicAutoBackup(source_file, temp_dir)
     new_source = tmp_path / "new_source.db"
@@ -292,10 +300,12 @@ def test_source_path_setter(source_file, temp_dir, tmp_path):
     ab.source_path = new_source
     assert ab.source_path == new_source.resolve()
 
+
 def test_find_project_root_failure():
     from AutoBackupAJM import find_project_root
     with pytest.raises(FileNotFoundError):
         find_project_root(start=Path("C:/"), marker_file="non_existent_marker_file_12345")
+
 
 def test_make_backup_dir_path_root_error(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
@@ -304,18 +314,21 @@ def test_make_backup_dir_path_root_error(source_file, temp_dir):
         ab._make_backup_dir_path_root(Path("some_path"))
         assert ab.backup_disabled is True
 
+
 def test_backup_dir_path_root_early_return(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
     # temp_dir exists, so it should return early
     ab.backup_dir_path_root = temp_dir
     # No question should be asked
 
+
 def test_overwrite_protection_check_raises(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
-    ab.backup() # Creates the backup
+    ab.backup()  # Creates the backup
     # Try to backup again without force
     with pytest.raises(FileExistsError, match="already exist"):
         ab._overwrite_protection_check()
+
 
 def test_backup_exception_handling(source_file, temp_dir):
     ab = BasicAutoBackup(source_file, temp_dir)
