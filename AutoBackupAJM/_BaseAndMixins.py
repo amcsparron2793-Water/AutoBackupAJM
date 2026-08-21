@@ -26,6 +26,10 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         self.backup_name = None
         self._logger = None
 
+    def __init_subclass__(cls, **kwargs):
+        if cls.DATE_TODAY is None:
+            raise ValueError("DATE_TODAY must be set in the subclass.")
+
     @property
     @abstractmethod
     def full_backup_path(self) -> Path:
