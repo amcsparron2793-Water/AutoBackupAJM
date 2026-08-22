@@ -4,7 +4,7 @@ auto_backup_ajm.py
 allows automated backup on a chosen schedule
 
 """
-from typing import TYPE_CHECKING, Type, Union, Optional
+from typing import TYPE_CHECKING, Type, Union, Optional, Any
 from pathlib import Path
 from hashlib import md5
 
@@ -16,6 +16,14 @@ from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
+
+
+class AutoBackupComparerFactory(ComparerFactory):
+    @classmethod
+    def inst_comparer_class(cls, source: Any, target: Any, **kwargs):
+        if not source.exists():
+            raise FileNotFoundError(f"source file {source} does not exist")
+        return super().inst_comparer_class(source, target, **kwargs)
 
 
 class BasicAutoBackup(_BaseAutoBackup):
@@ -66,7 +74,7 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
     :ivar comparer: The comparer instance used to evaluate changes between source files and backup files.
     :type comparer: Union['_BaseHashComparer', Type[CustomComparerFactory], Type['ComparerFactory']]
     """
-    DEFAULT_COMPARER_CLASS = ComparerFactory
+    DEFAULT_COMPARER_CLASS = AutoBackupComparerFactory
 
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__(source_path, backup_dir_path_root, **kwargs)
@@ -103,6 +111,6 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
 
 if __name__ == "__main__":
-    ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other'),
+    ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other.zip'),
                                      backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'))
     ECAB.backup()  # force_backup=True)
