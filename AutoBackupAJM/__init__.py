@@ -19,4 +19,5 @@ MISC_PROJECT_DIR = PROJECT_ROOT / "Misc_Project_Files"
 from AutoBackupAJM.auto_backup_logger import AutoBackupLogger
 from AutoBackupAJM.auto_backup_ajm import BasicAutoBackup, ExternalCompareAutoBackup
 
-# from AutoBackupAJM.auto_backup_continuous_check import AutoBackupContinuousCheck
+from AutoBackupAJM.auto_backup_continuous_check import (BasicAutoBackupContinuousCheck,
+                                                        ExternalCompareContinuousCheck)
