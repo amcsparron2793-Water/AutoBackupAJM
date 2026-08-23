@@ -22,14 +22,20 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
 
     def _monitor_loop(self):
         if self.due_for_backup:
-            self._logger.info("Attempting backup...", print_msg=True)
             self.backup()
+        self.sleep(10)  # TODO: make this based on self.backup_frequency
+
+    def _eval_for_and_attempt_backup(self, **kwargs):
+        use_progress_bar = kwargs.get('use_progress_bar', True)
+        if self.due_and_changed or self.force_backup:
+            self._logger.info("Attempting backup...", print_msg=True)
+            self._attempt_backup(use_progress_bar=use_progress_bar)
             self.not_due_notified = False
+
         else:
             if not self.not_due_notified:
-                self._logger.info("no backup necessary", print_msg=True)
+                self._logger.debug("No backup necessary", print_msg=True)
                 self.not_due_notified = True
-        self.sleep(10)  # TODO: make this based on self.backup_frequency
 
     def continuous_monitor(self):
         self._log_intro_and_warnings()
