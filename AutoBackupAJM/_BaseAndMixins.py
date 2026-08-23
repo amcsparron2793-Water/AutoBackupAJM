@@ -387,8 +387,9 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
 
     def _attempt_backup(self, use_progress_bar: bool = True):
         self._overwrite_protection_check()
-
         progress_bar = self._get_backup_progress_bar(use_progress_bar)
+
+        self._log_attempted_backup()
 
         try:
             self._write_backup_bytes(progress_bar=progress_bar)
@@ -400,8 +401,20 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
                 progress_bar.close()
             self._logger.exception(f"Backup failed: {e}")
 
+    def _log_attempted_backup(self, **kwargs):
+        self._logger.info(f"Attempting backup at {datetime.today()} "
+                          f"for {self.source_path.name}...", print_msg=True)
+        self._logger.debug(f"full source_path is {self.source_path}, "
+                           f"full backup_dir_path_root is {self.backup_dir_path_root}")
+
+    def _log_no_backup_due(self):
+        self._logger.debug(f"No backup necessary at {datetime.today()} "
+                           f"for {self.source_path.name}", print_msg=True)
+        self._logger.debug(f"full source_path is {self.source_path}, "
+                           f"full backup_dir_path_root is {self.backup_dir_path_root}")
+
     def _process_no_backup_due(self, **kwargs):
-        self._logger.debug("No backup necessary", print_msg=True)
+        self._log_no_backup_due()
 
     def _eval_for_and_attempt_backup(self, **kwargs):
         use_progress_bar = kwargs.get('use_progress_bar', True)
