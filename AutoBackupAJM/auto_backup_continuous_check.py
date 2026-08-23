@@ -28,11 +28,10 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def _process_no_backup_due(self, **kwargs):
         self.__class__.DATE_TODAY = datetime.today()
         if not self.not_due_notified:
-            self._logger.debug(f"No backup necessary at {datetime.today()}", print_msg=True)
+            self._log_no_backup_due()
             self.not_due_notified = True
 
     def _attempt_backup(self, use_progress_bar: bool = True):
-        self._logger.info(f"Attempting backup at {datetime.today()}...", print_msg=True)
         super()._attempt_backup(use_progress_bar=use_progress_bar)
         self.not_due_notified = False
 
