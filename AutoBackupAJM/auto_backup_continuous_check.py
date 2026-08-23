@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from time import sleep
 from typing import Union
@@ -6,7 +7,6 @@ from AutoBackupAJM import BasicAutoBackup, ExternalCompareAutoBackup, MISC_PROJE
 
 
 # TODO: use the_sandman for sleeping?
-# TODO: refresh DATE_TODAY every hour for continuous?
 # FIXME: needs logger work?
 class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
@@ -33,6 +33,7 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
             self.not_due_notified = False
 
         else:
+            self.__class__.DATE_TODAY = datetime.today()
             if not self.not_due_notified:
                 self._logger.debug("No backup necessary", print_msg=True)
                 self.not_due_notified = True
