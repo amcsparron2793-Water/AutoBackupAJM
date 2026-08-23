@@ -8,7 +8,7 @@ import questionary
 from tqdm import tqdm
 from EasyLoggerAJM import SetupLogger
 
-from AutoBackupAJM import AutoBackupLogger
+from AutoBackupAJM.auto_backup_logger import AutoBackupLogger
 
 if TYPE_CHECKING:
     from logging import Logger
