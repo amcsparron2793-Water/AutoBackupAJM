@@ -25,18 +25,16 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
             self.backup()
         self.sleep(10)  # TODO: make this based on self.backup_frequency
 
-    def _eval_for_and_attempt_backup(self, **kwargs):
-        use_progress_bar = kwargs.get('use_progress_bar', True)
-        if self.due_and_changed or self.force_backup:
-            self._logger.info("Attempting backup...", print_msg=True)
-            self._attempt_backup(use_progress_bar=use_progress_bar)
-            self.not_due_notified = False
+    def _process_no_backup_due(self, **kwargs):
+        self.__class__.DATE_TODAY = datetime.today()
+        if not self.not_due_notified:
+            self._logger.debug("No backup necessary", print_msg=True)
+            self.not_due_notified = True
 
-        else:
-            self.__class__.DATE_TODAY = datetime.today()
-            if not self.not_due_notified:
-                self._logger.debug("No backup necessary", print_msg=True)
-                self.not_due_notified = True
+    def _attempt_backup(self, use_progress_bar: bool = True):
+        self._logger.info("Attempting backup...", print_msg=True)
+        super()._attempt_backup(use_progress_bar=use_progress_bar)
+        self.not_due_notified = False
 
     def continuous_monitor(self):
         self._log_intro_and_warnings()
@@ -45,7 +43,7 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
             try:
                 self._monitor_loop()
             except KeyboardInterrupt as e:
-                self._logger.warning("user interrupted backup process, exiting...")
+                self._logger.error("user interrupted backup process, exiting...")
                 break
 
     def sleep(self, seconds: int):
