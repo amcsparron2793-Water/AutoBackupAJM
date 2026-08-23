@@ -4,26 +4,19 @@ auto_backup_ajm.py
 allows automated backup on a chosen schedule
 
 """
-from typing import TYPE_CHECKING, Type, Union, Optional, Any
+from typing import TYPE_CHECKING, Type, Union, Optional
 from pathlib import Path
 from hashlib import md5
 
 from AutoBackupAJM import MISC_PROJECT_DIR
 from AutoBackupAJM._BaseAndMixins import _BaseAutoBackup
 
-from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
+from AutoBackupAJM.custom_compare_factory import AutoBackupComparerFactory
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
-
-
-class AutoBackupComparerFactory(ComparerFactory):
-    @classmethod
-    def inst_comparer_class(cls, source: Any, target: Any, **kwargs):
-        if not source.exists():
-            raise FileNotFoundError(f"source file {source} does not exist")
-        return super().inst_comparer_class(source, target, **kwargs)
+    from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 
 class BasicAutoBackup(_BaseAutoBackup):
