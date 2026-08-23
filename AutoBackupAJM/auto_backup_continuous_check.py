@@ -12,6 +12,7 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
         super().__init__(source_path, backup_dir_path_root, **kwargs)
         self.not_due_notified = False
+        self._logger.name = self.__class__.__name__
 
     def _log_intro_and_warnings(self):
         self._logger.info("Continuous Backup Monitor started...", print_msg=True)
@@ -52,7 +53,9 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
 
 
 class ExternalCompareContinuousCheck(ExternalCompareAutoBackup, BasicAutoBackupContinuousCheck):
-    pass
+    def __init__(self, source_path: Path, backup_dir_path_root: Path, **kwargs):
+        super().__init__(source_path, backup_dir_path_root, **kwargs)
+        self._logger.name = self.__class__.__name__
 
 
 if __name__ == "__main__":
