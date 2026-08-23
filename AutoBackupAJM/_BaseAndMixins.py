@@ -400,12 +400,15 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
                 progress_bar.close()
             self._logger.exception(f"Backup failed: {e}")
 
+    def _process_no_backup_due(self, **kwargs):
+        self._logger.debug("No backup necessary", print_msg=True)
+
     def _eval_for_and_attempt_backup(self, **kwargs):
         use_progress_bar = kwargs.get('use_progress_bar', True)
         if self.due_and_changed or self.force_backup:
             self._attempt_backup(use_progress_bar=use_progress_bar)
         else:
-            self._logger.debug("No backup necessary", print_msg=True)
+            self._process_no_backup_due()
 
     def backup(self, **kwargs):
         """
