@@ -10,6 +10,7 @@ from AutoBackupAJM import BasicAutoBackup, ExternalCompareAutoBackup, MISC_PROJE
 # FIXME: needs logger work?
 class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def __init__(self, source_path: Union[Path, str], backup_dir_path_root: Union[Path, str], **kwargs):
+        kwargs.setdefault('log_level_to_stream', 'ERROR')
         super().__init__(source_path, backup_dir_path_root, **kwargs)
         self.not_due_notified = False
         self._logger.name = self.__class__.__name__
@@ -21,18 +22,17 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
         self._logger.warning("_make_backup_dir_path_root_question() always returns True for continuous monitor")
 
     def _monitor_loop(self):
-        if self.due_for_backup:
-            self.backup()
+        self.backup()
         self.sleep(10)  # TODO: make this based on self.backup_frequency
 
     def _process_no_backup_due(self, **kwargs):
         self.__class__.DATE_TODAY = datetime.today()
         if not self.not_due_notified:
-            self._logger.debug("No backup necessary", print_msg=True)
+            self._logger.debug(f"No backup necessary at {datetime.today()}", print_msg=True)
             self.not_due_notified = True
 
     def _attempt_backup(self, use_progress_bar: bool = True):
-        self._logger.info("Attempting backup...", print_msg=True)
+        self._logger.info(f"Attempting backup at {datetime.today()}...", print_msg=True)
         super()._attempt_backup(use_progress_bar=use_progress_bar)
         self.not_due_notified = False
 
