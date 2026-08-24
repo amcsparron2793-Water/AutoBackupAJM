@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Type, Union, Optional
 from pathlib import Path
 from hashlib import md5
 
+from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
+
 from AutoBackupAJM import MISC_PROJECT_DIR
 from AutoBackupAJM._BaseAndMixins import _BaseAutoBackup
 
@@ -15,7 +17,7 @@ from AutoBackupAJM.custom_compare_factory import AutoBackupComparerFactory
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
-    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
+    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer, DirectoryToDirectoryComparer
     from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 
@@ -75,6 +77,10 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
+
+        if issubclass(DirectoryToDirectoryComparer, self.comparer.__class__):
+            # TODO: put hashfile in backup if the backup is zipped and cleaned up (set flag here)
+            ...
 
     def _get_comparer(self,
                       comparer_class: Union['_BaseHashComparer', Type['ComparerFactory']],
