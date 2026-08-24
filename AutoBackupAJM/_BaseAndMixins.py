@@ -187,10 +187,13 @@ class _MakeBackupDirPathRootMixin(metaclass=ABCMeta):
 
 
 class _CopyBytesMixin(metaclass=ABCMeta):
+    ZIP_BACKUP_DEFAULT = True
+
     def __init__(self):
         super().__init__()
         self._logger = None
         self.source_path = None
+        self.zip_backup = None
 
     @property
     @abstractmethod
@@ -212,7 +215,7 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         if progress_bar:
             progress_bar.update(1)
 
-    def _write_backup_bytes_for_dir(self, progress_bar: Optional[tqdm] = None):
+    def _write_backup_bytes_for_dir(self, progress_bar: Optional[tqdm] = None, **kwargs):
         if progress_bar:
             def copy_with_progress(src, dst, *, follow_symlinks=True):
                 shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
@@ -222,6 +225,18 @@ class _CopyBytesMixin(metaclass=ABCMeta):
             shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
         else:
             shutil.copytree(self.source_path, self.full_backup_path)
+        if self.zip_backup:
+            self._zip_and_clean_backup(**kwargs)
+
+    # FIXME: this creates an issue for detecting existing DIRECTORY backups, if the backup dir is removed,
+    #  then the directory backup will never not be due, since the directory isn't in the backup folder.
+    def _zip_and_clean_backup(self, fmt='zip', **kwargs):
+        cleanup_backup_path = kwargs.get('cleanup_backup_path', True)
+        shutil.make_archive(base_name=self.full_backup_path.as_posix(),
+                            format=fmt, root_dir=self.full_backup_path,
+                            logger=self._logger)
+        if cleanup_backup_path:
+            shutil.rmtree(self.full_backup_path)
 
     def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None):
         if self.source_path.is_file():
@@ -365,6 +380,7 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
 
     def _set_initial_properties_values(self, backup_dir_path_root, **kwargs):
         self.backup_disabled = kwargs.get('disable_backup', False)
+        self.zip_backup = kwargs.get('zip_backup', self.__class__.ZIP_BACKUP_DEFAULT)
         # _backup_dir_path_root is set directly so testing patch works
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
         self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
