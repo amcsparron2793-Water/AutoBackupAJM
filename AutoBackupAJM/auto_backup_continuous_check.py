@@ -15,15 +15,11 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
         self.not_due_notified = False
         self._logger.name = self.__class__.__name__
 
-    def _log_intro_and_warnings(self):
-        self._logger.info("Continuous Backup Monitor started...", print_msg=True)
-        self._logger.info("press ctrl+c to exit", print_msg=True)
-        self._logger.warning("_overwrite_protection_check() disabled for continuous monitor")
-        self._logger.warning("_make_backup_dir_path_root_question() always returns True for continuous monitor")
+    def _overwrite_protection_check(self):
+        return
 
-    def _monitor_loop(self):
-        self.backup()
-        self.sleep(10)  # TODO: make this based on self.backup_frequency
+    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
+        return True
 
     def _process_no_backup_due(self, **kwargs):
         self.__class__.DATE_TODAY = datetime.today()
@@ -34,6 +30,16 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def _attempt_backup(self, use_progress_bar: bool = True):
         super()._attempt_backup(use_progress_bar=use_progress_bar)
         self.not_due_notified = False
+
+    def _log_intro_and_warnings(self):
+        self._logger.info("Continuous Backup Monitor started...", print_msg=True)
+        self._logger.info("press ctrl+c to exit", print_msg=True)
+        self._logger.warning("_overwrite_protection_check() disabled for continuous monitor")
+        self._logger.warning("_make_backup_dir_path_root_question() always returns True for continuous monitor")
+
+    def _monitor_loop(self):
+        self.backup()
+        self.sleep(10)  # TODO: make this based on self.backup_frequency
 
     def continuous_monitor(self):
         self._log_intro_and_warnings()
@@ -48,12 +54,6 @@ class BasicAutoBackupContinuousCheck(BasicAutoBackup):
     def sleep(self, seconds: int):
         self._logger.debug(f"sleeping for {seconds} seconds...")
         sleep(seconds)
-
-    def _overwrite_protection_check(self):
-        return
-
-    def _make_backup_dir_path_root_question(self, backup_dir_path_root: Path):
-        return True
 
 
 class ExternalCompareContinuousCheck(ExternalCompareAutoBackup, BasicAutoBackupContinuousCheck):
