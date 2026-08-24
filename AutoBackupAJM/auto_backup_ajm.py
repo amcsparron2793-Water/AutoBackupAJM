@@ -17,7 +17,7 @@ from AutoBackupAJM.custom_compare_factory import AutoBackupComparerFactory
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember
-    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer, DirectoryToDirectoryComparer
+    from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
     from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 
 
