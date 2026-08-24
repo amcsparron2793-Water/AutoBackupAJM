@@ -1,7 +1,13 @@
+from pathlib import Path
+
 # noinspection PyPackageRequirements
 import pytest
 
 from EasyLoggerAJM import SetupLogger
+from AutoBackupAJM.auto_backup_logger import AutoBackupLogger
+
+TEST_LOGS_PROJECT_NAME = 'TestLogs'
+TEST_LOGS_ROOT_LOG_LOCATION = Path(AutoBackupLogger.ROOT_LOG_LOCATION_DEFAULT / TEST_LOGS_PROJECT_NAME)
 
 
 @pytest.fixture(autouse=True)
@@ -10,6 +16,8 @@ def disable_logger_console_output(monkeypatch):
 
     def setup_logger_without_console(**kwargs):
         kwargs.setdefault("show_warning_logs_in_console", False)
+        kwargs.setdefault('project_name', TEST_LOGS_PROJECT_NAME)
+        kwargs.setdefault('root_log_location', TEST_LOGS_ROOT_LOG_LOCATION)
         return original_setup_logger(**kwargs)
 
     monkeypatch.setattr(
