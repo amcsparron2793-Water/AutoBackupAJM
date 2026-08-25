@@ -23,6 +23,7 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
     RECENT_CUTOFF_DELTA_MINUTES = 2
 
     def __init__(self):
+        super().__init__()
         self._backup_frequency = None
         self.backup_name = None
         self._logger = None
@@ -188,12 +189,15 @@ class _MakeBackupDirPathRootMixin(metaclass=ABCMeta):
 
 class _CopyBytesMixin(metaclass=ABCMeta):
     ZIP_BACKUP_DEFAULT = True
+    CLEANUP_BACKUP_PATH_DEFAULT = False
 
     def __init__(self):
         super().__init__()
         self._logger = None
         self.source_path = None
         self.zip_backup = None
+        self.cleanup_backup_path = None
+        self.backup_was_cleaned = None
 
     @property
     @abstractmethod
@@ -228,21 +232,41 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         if self.zip_backup:
             self._zip_and_clean_backup(**kwargs)
 
+    def _write_file_hash_with_backup(self, hash_file_path: Path):
+        try:
+            shutil.copy2(hash_file_path, self.full_backup_path.parent)
+            self._logger.debug(f"Copied {hash_file_path} to {self.full_backup_path}")
+        except shutil.Error as e:
+            raise shutil.Error(f"Could not copy {hash_file_path} to {self.full_backup_path.parent}") from e
+
     # FIXME: this creates an issue for detecting existing DIRECTORY backups, if the backup dir is removed,
     #  then the directory backup will never not be due, since the directory isn't in the backup folder.
     def _zip_and_clean_backup(self, fmt='zip', **kwargs):
-        cleanup_backup_path = kwargs.get('cleanup_backup_path', True)
+        self.cleanup_backup_path = kwargs.get('cleanup_backup_path', self.cleanup_backup_path)
+        hash_file_path = kwargs.get('hash_file_path', None)
+
+        # TODO: clean this up (make it its own method?)
+        #  If the hash file is placed in the parent dir
+        #  instead of the zip itself, then this piece can go
+        #  anywhere in the method
+        if self.cleanup_backup_path:
+            if hash_file_path is not None:
+                self._write_file_hash_with_backup(hash_file_path=hash_file_path)
+            else:
+                self._logger.error(f"hash_file_path is None, not archiving hash file.")
+
         shutil.make_archive(base_name=self.full_backup_path.as_posix(),
                             format=fmt, root_dir=self.full_backup_path,
                             logger=self._logger)
-        if cleanup_backup_path:
+        if self.cleanup_backup_path:
             shutil.rmtree(self.full_backup_path)
+            self.backup_was_cleaned = True
 
-    def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None):
+    def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None, **kwargs):
         if self.source_path.is_file():
             self._write_backup_bytes_for_file(progress_bar)
         elif self.source_path.is_dir():
-            self._write_backup_bytes_for_dir(progress_bar)
+            self._write_backup_bytes_for_dir(progress_bar, **kwargs)
         else:
             raise FileNotFoundError(f"{self.source_path} does not exist")
 
@@ -381,6 +405,8 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
     def _set_initial_properties_values(self, backup_dir_path_root, **kwargs):
         self.backup_disabled = kwargs.get('disable_backup', False)
         self.zip_backup = kwargs.get('zip_backup', self.__class__.ZIP_BACKUP_DEFAULT)
+        self.cleanup_backup_path = kwargs.get('cleanup_backup_path', self.__class__.CLEANUP_BACKUP_PATH_DEFAULT)
+
         # _backup_dir_path_root is set directly so testing patch works
         self._backup_dir_path_root = Path(backup_dir_path_root).resolve()
         self.backup_frequency = kwargs.get('backup_frequency', self.__class__.DEFAULT_BACKUP_FREQUENCY)
@@ -401,14 +427,14 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
                 else:
                     raise FileExistsError(FEE_text)
 
-    def _attempt_backup(self, use_progress_bar: bool = True):
+    def _attempt_backup(self, use_progress_bar: bool = True, **kwargs):
         self._overwrite_protection_check()
         progress_bar = self._get_backup_progress_bar(use_progress_bar)
 
         self._log_attempted_backup()
 
         try:
-            self._write_backup_bytes(progress_bar=progress_bar)
+            self._write_backup_bytes(progress_bar=progress_bar, **kwargs)
             if progress_bar:
                 progress_bar.close()
             self._logger.info(f"Backup successful: {self.full_backup_path}", print_msg=True)
@@ -433,9 +459,9 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
         self._log_no_backup_due()
 
     def _eval_for_and_attempt_backup(self, **kwargs):
-        use_progress_bar = kwargs.get('use_progress_bar', True)
+        kwargs.setdefault('use_progress_bar', True)
         if self.due_and_changed or self.force_backup:
-            self._attempt_backup(use_progress_bar=use_progress_bar)
+            self._attempt_backup(**kwargs)
         else:
             self._process_no_backup_due()
 

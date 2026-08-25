@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     # noinspection PyProtectedMember
     from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import _BaseHashComparer
     from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
+    from tqdm import tqdm
 
 
 class BasicAutoBackup(_BaseAutoBackup):
@@ -78,10 +79,6 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
 
-        if issubclass(DirectoryToDirectoryComparer, self.comparer.__class__):
-            # TODO: put hashfile in backup if the backup is zipped and cleaned up (set flag here)
-            ...
-
     def _get_comparer(self,
                       comparer_class: Union['_BaseHashComparer', Type['ComparerFactory']],
                       **kwargs):
@@ -100,6 +97,8 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
     @property
     def source_changed_since_last_backup(self):
+        # TODO: need to check the hash file first if it is present in the backup directory.
+        #  Then as a secondary method, rehash the backup
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
@@ -108,8 +107,12 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
         # we need to return the inverse
         return not self.comparer.compare()
 
+    def _write_backup_bytes_for_dir(self, progress_bar: Optional['tqdm'] = None, **kwargs):
+        kwargs.setdefault('hash_file_path', self.comparer.source_directory_hasher.record_path)
+        super()._write_backup_bytes_for_dir(progress_bar, **kwargs)
+
 
 if __name__ == "__main__":
     ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other'),
                                      backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'))
-    ECAB.backup(force_backup=True, log_level_to_stream='DEBUG')
+    ECAB.backup(force_backup=True, log_level_to_stream='DEBUG', cleanup_backup_path=True)
