@@ -262,8 +262,9 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         self._logger.error(f"hash_file_path not provided, not copying hash file to new destination. "
                            f"Backup should be intact.")
 
-    # FIXME: this creates an issue for detecting existing DIRECTORY backups, if the backup dir is removed,
-    #  then the directory backup will never not be due, since the directory isn't in the backup folder.
+    # FIXME: the CLEANUP portion of this creates an issue for detecting existing DIRECTORY backups,
+    #  if the backup dir is removed, then the directory backup will never not be due,
+    #  since the directory isn't in the backup folder. cleanup portion has been temp disabled
     def _zip_and_clean_backup(self, fmt='zip', **kwargs):
         self.cleanup_backup_path = kwargs.get('cleanup_backup_path', self.cleanup_backup_path)
 
