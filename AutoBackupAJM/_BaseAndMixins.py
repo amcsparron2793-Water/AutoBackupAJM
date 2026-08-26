@@ -215,45 +215,57 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         return []
 
     def _write_backup_bytes_for_file(self, progress_bar: Optional[tqdm] = None):
-        shutil.copy2(self.source_path, self.full_backup_path)
-        if progress_bar:
-            progress_bar.update(1)
+        try:
+            shutil.copy2(self.source_path, self.full_backup_path)
+            if progress_bar:
+                progress_bar.update(1)
+        except shutil.Error as e:
+            self._logger.exception(f"Could not copy {self.source_path} to {self.full_backup_path}: {e}")
+            raise
 
     def _write_backup_bytes_for_dir(self, progress_bar: Optional[tqdm] = None, **kwargs):
-        if progress_bar:
-            def copy_with_progress(src, dst, *, follow_symlinks=True):
-                shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
-                # noinspection PyUnresolvedReferences
-                progress_bar.update(1)
+        try:
+            if progress_bar:
+                def copy_with_progress(src, dst, *, follow_symlinks=True):
+                    shutil.copy2(src, dst, follow_symlinks=follow_symlinks)
+                    # noinspection PyUnresolvedReferences
+                    progress_bar.update(1)
 
-            shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
-        else:
-            shutil.copytree(self.source_path, self.full_backup_path)
+                shutil.copytree(self.source_path, self.full_backup_path, copy_function=copy_with_progress)
+            else:
+                shutil.copytree(self.source_path, self.full_backup_path)
+        except shutil.Error as e:
+            self._logger.exception(f"Could not copy {self.source_path} to {self.full_backup_path}: {e}")
+            raise
+
         if self.zip_backup:
             self._zip_and_clean_backup(**kwargs)
 
-    def _write_file_hash_with_backup(self, hash_file_path: Path):
-        try:
-            shutil.copy2(hash_file_path, self.full_backup_path.parent)
-            self._logger.debug(f"Copied {hash_file_path} to {self.full_backup_path}")
-        except shutil.Error as e:
-            raise shutil.Error(f"Could not copy {hash_file_path} to {self.full_backup_path.parent}") from e
+    def _write_file_hash_with_backup(self, hash_file_path: Optional[Path], **kwargs):
+        """ Writes the hashes of the backed-up directory contents to the specified path."""
+        hash_file_copy_dest = kwargs.get('hash_file_copy_dest', self.full_backup_path.parent)
+        self._logger.debug(f"hash_file_copy_dest: {hash_file_copy_dest}")
+
+        if hash_file_path is not None:
+            try:
+                shutil.copy2(hash_file_path, hash_file_copy_dest)
+                self._logger.debug(f"Copied {hash_file_path} to {hash_file_copy_dest}")
+                return
+            except shutil.Error as e:
+                try:
+                    raise shutil.Error(f"Could not copy {hash_file_path} to {hash_file_copy_dest}") from e
+                except shutil.Error as e:
+                    self._logger.exception(e)
+                    self._logger.warning("hash_file not copied to new destination. "
+                                         "Backup should be intact.")
+                    return
+        self._logger.error(f"hash_file_path not provided, not copying hash file to new destination. "
+                           f"Backup should be intact.")
 
     # FIXME: this creates an issue for detecting existing DIRECTORY backups, if the backup dir is removed,
     #  then the directory backup will never not be due, since the directory isn't in the backup folder.
     def _zip_and_clean_backup(self, fmt='zip', **kwargs):
         self.cleanup_backup_path = kwargs.get('cleanup_backup_path', self.cleanup_backup_path)
-        hash_file_path = kwargs.get('hash_file_path', None)
-
-        # TODO: clean this up (make it its own method?)
-        #  If the hash file is placed in the parent dir
-        #  instead of the zip itself, then this piece can go
-        #  anywhere in the method
-        if self.cleanup_backup_path:
-            if hash_file_path is not None:
-                self._write_file_hash_with_backup(hash_file_path=hash_file_path)
-            else:
-                self._logger.error(f"hash_file_path is None, not archiving hash file.")
 
         shutil.make_archive(base_name=self.full_backup_path.as_posix(),
                             format=fmt, root_dir=self.full_backup_path,
@@ -261,6 +273,7 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         if self.cleanup_backup_path:
             shutil.rmtree(self.full_backup_path)
             self.backup_was_cleaned = True
+            self._write_file_hash_with_backup(**kwargs)
 
     def _write_backup_bytes(self, progress_bar: Optional[tqdm] = None, **kwargs):
         if self.source_path.is_file():
