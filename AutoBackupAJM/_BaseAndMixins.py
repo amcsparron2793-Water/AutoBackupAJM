@@ -270,7 +270,20 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         shutil.make_archive(base_name=self.full_backup_path.as_posix(),
                             format=fmt, root_dir=self.full_backup_path,
                             logger=self._logger)
+
+        expected_archive_file_path = self.full_backup_path.with_suffix(f'.{fmt}')
+
+        if expected_archive_file_path.is_file():
+            self._logger.info(f"Zipped backup successfully: {expected_archive_file_path}", print_msg=True)
+
+        # FIXME: this is NotImplemented because while the cleanup works,
+        #  it causes issues detecting previous backups
         if self.cleanup_backup_path:
+            try:
+                raise NotImplementedError("cleanup_backup_path not implemented yet")
+            except NotImplementedError as e:
+                self._logger.error(e)
+                return
             shutil.rmtree(self.full_backup_path)
             self.backup_was_cleaned = True
             self._write_file_hash_with_backup(**kwargs)

@@ -108,11 +108,12 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
         return not self.comparer.compare()
 
     def _write_backup_bytes_for_dir(self, progress_bar: Optional['tqdm'] = None, **kwargs):
-        kwargs.setdefault('hash_file_path', self.comparer.source_directory_hasher.record_path)
+        # TODO: this kwarg is not implemented yet, see _CopyBytesMixin._zip_and_clean_backup
+        # kwargs.setdefault('hash_file_path', self.comparer.source_directory_hasher.record_path)
         super()._write_backup_bytes_for_dir(progress_bar, **kwargs)
 
 
 if __name__ == "__main__":
     ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other'),
                                      backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'))
-    ECAB.backup(force_backup=True, log_level_to_stream='DEBUG', cleanup_backup_path=True)
+    ECAB.backup(force_backup=True)#, cleanup_backup_path=True)
