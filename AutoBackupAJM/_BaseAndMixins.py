@@ -85,6 +85,13 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
                            f"recent_cutoff_delta: {self.__class__.RECENT_CUTOFF_DELTA_MINUTES}")
         return backup_created_at > recent_cutoff
 
+    @staticmethod
+    def glob_with_optional_zip(folder: Path, name: str) -> list[Path]:
+        return [
+            *folder.rglob(name),
+            *folder.rglob(f"{name}.zip"),
+        ]
+
     @property
     def most_recent_backup_file(self) -> Optional[tuple[Path, float]]:
         """
@@ -94,7 +101,9 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
             Tuple containing the most recent backup file and its creation time, or None if no backup files are found.
         """
         file_create_times = [(file, file.stat().st_ctime)
-                             for file in self.backup_dir_path_root.rglob(self.backup_name)]
+                             for file in self.glob_with_optional_zip(
+                self.backup_dir_path_root, self.backup_name)]
+
         try:
             return max(file_create_times, key=lambda x: x[1])
         except ValueError:
