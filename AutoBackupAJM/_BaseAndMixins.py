@@ -27,6 +27,7 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         self._backup_frequency = None
         self.backup_name = None
         self._logger = None
+        self.use_custom_file_for_backup_due = False
 
     def __init_subclass__(cls, **kwargs):
         if cls.DATE_TODAY is None:
@@ -115,6 +116,10 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         Check if a backup is due based on the backup file history and the backup frequency set.
         Returns True if a backup is due, False otherwise.
         """
+        if self.use_custom_file_for_backup_due:
+            # TODO: how to get this file?
+            ...
+
         # if there are no backup files then no matter what create them
         if self.most_recent_backup_file is not None:
             # noinspection PyTypeChecker
