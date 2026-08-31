@@ -11,8 +11,12 @@ class _AutoBackupCustomLogger(_EasyLoggerCustomLogger):
         super().__init__(*args, **kwargs)
         self.colorizer = Colorizer()
 
-    def _log(self, level, msg, args, exc_info=None, extra=None, stack_info=False, **kwargs):
+    def _log(self, level, msg, args,
+             exc_info=None, extra=None,
+             stack_info=False, **kwargs):
         """
+        _log is called by every logging method to actually log the message.
+
         :param level: The logging level specified for the log message.
         :type level: int
         :param msg: The message that needs to be logged.
