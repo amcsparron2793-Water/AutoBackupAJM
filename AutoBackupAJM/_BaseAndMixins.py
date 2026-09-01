@@ -122,23 +122,27 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
             original_mtime = datetime(*zip_info.date_time)
             return original_mtime
 
+    # noinspection PyUnresolvedReferences
+    def _get_mrb_timestamp(self) -> float:
+        if self.most_recent_backup_file[0].is_dir() and self.original_source_is_zip:
+            ts: float = self.most_recent_backup_file[0].with_suffix('.zip').stat().st_mtime
+            # m = self._get_original_zip_mtime(self.most_recent_backup_file[0].with_suffix('.zip'),
+            #                              list(self.most_recent_backup_file[0].iterdir())[0].name)
+        else:
+            # noinspection PyTypeChecker
+            ts: float = self.most_recent_backup_file[1]
+        return ts
+
     @property
     def due_for_backup(self):
         """
         Check if a backup is due based on the backup file history and the backup frequency set.
         Returns True if a backup is due, False otherwise.
         """
-
-        # if there are no backup files then no matter what create them
         if self.most_recent_backup_file is not None:
-            if self.most_recent_backup_file[0].is_dir() and self.original_source_is_zip:
-                ts: float = self.most_recent_backup_file[0].with_suffix('.zip').stat().st_mtime
-                # m = self._get_original_zip_mtime(self.most_recent_backup_file[0].with_suffix('.zip'),
-                #                              list(self.most_recent_backup_file[0].iterdir())[0].name)
-            else:
-                # noinspection PyTypeChecker
-                ts: float = self.most_recent_backup_file[1]
+            ts = self._get_mrb_timestamp()
             most_recent_datetime = datetime.fromtimestamp(ts)
+        # if there are no backup files, then no matter what create them
         else:
             return True
         return self._is_due(most_recent_datetime)

@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Type, Union, Optional
 from pathlib import Path
 from hashlib import md5
 
-from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
-
 from AutoBackupAJM import MISC_PROJECT_DIR
 from AutoBackupAJM._BaseAndMixins import _BaseAutoBackup
 
