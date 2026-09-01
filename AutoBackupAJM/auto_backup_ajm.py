@@ -78,6 +78,7 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
         kwargs.setdefault('comparer_class', self.__class__.DEFAULT_COMPARER_CLASS)
         self.comparer = self._get_comparer(**kwargs)
+        self.original_source_is_zip = self.comparer.original_source_is_zip
 
     def _get_comparer(self,
                       comparer_class: Union['_BaseHashComparer', Type['ComparerFactory']],

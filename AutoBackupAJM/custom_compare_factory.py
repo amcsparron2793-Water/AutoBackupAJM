@@ -3,9 +3,18 @@ from pathlib import Path
 from typing import Any
 
 from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
+from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
+
+
+class AutoBackupDirToDirComparer(DirectoryToDirectoryComparer):
+    def __init__(self, source_dir: Path, target_dir: Path, **kwargs):
+        super().__init__(source_dir, target_dir, **kwargs)
+        self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
 
 
 class AutoBackupComparerFactory(ComparerFactory):
+    _DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS = AutoBackupDirToDirComparer
+
     @classmethod
     def inst_comparer_class(cls, source: Any, target: Any, **kwargs):
         if not source.exists():
@@ -30,13 +39,16 @@ class AutoBackupComparerFactory(ComparerFactory):
     @classmethod
     def _directory_src_targets(cls, source: Any, target: Any, **kwargs):
         target_is_directory = cls._is_directory_input(target)
-        # was_unzipped could be useful to know, but not absolutely needed right now
+
         target, was_unzipped = cls._detect_and_unzip_archive(target)
+        kwargs.setdefault('original_source_is_zip', was_unzipped)
+
+        if was_unzipped:
+            target_is_directory = cls._is_directory_input(target)
+
         # FIXME: the unzipped directory's create time (BUT NOT THE FILES INSIDE)
         #  is going to be the same as the current time,
         #  so we need to set it to the create time of the zip file or the file inside
-        #import datetime
-        #print(datetime.datetime.fromtimestamp(target.stat().st_ctime))
         if target_is_directory:
             return cls._DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS(
                 source_dir=source,

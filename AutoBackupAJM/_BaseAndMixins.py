@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Union, TYPE_CHECKING, List
+from zipfile import ZipFile
 
 import questionary
 from tqdm import tqdm
@@ -27,7 +28,7 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         self._backup_frequency = None
         self.backup_name = None
         self._logger = None
-        self.use_custom_file_for_backup_due = False
+        self.original_source_is_zip: bool = None
 
     def __init_subclass__(cls, **kwargs):
         if cls.DATE_TODAY is None:
@@ -110,20 +111,34 @@ class _IsDueForBackupMixin(metaclass=ABCMeta):
         except ValueError:
             return None
 
+    @staticmethod
+    def _get_original_zip_mtime(zip_path: Path, target_file_inside_zip: str, **kwargs):
+        """Gets the modification time of a file inside a ZIP archive."""
+        with ZipFile(zip_path, "r") as zf:
+            # Get metadata for the specific file
+            zip_info = zf.getinfo(target_file_inside_zip)
+
+            # zip_info.date_time returns a tuple: (year, month, day, hour, minute, second)
+            original_mtime = datetime(*zip_info.date_time)
+            return original_mtime
+
     @property
     def due_for_backup(self):
         """
         Check if a backup is due based on the backup file history and the backup frequency set.
         Returns True if a backup is due, False otherwise.
         """
-        if self.use_custom_file_for_backup_due:
-            # TODO: how to get this file?
-            ...
 
         # if there are no backup files then no matter what create them
         if self.most_recent_backup_file is not None:
-            # noinspection PyTypeChecker
-            most_recent_datetime = datetime.fromtimestamp(self.most_recent_backup_file[1])
+            if self.most_recent_backup_file[0].is_dir() and self.original_source_is_zip:
+                ts: float = self.most_recent_backup_file[0].with_suffix('.zip').stat().st_mtime
+                # m = self._get_original_zip_mtime(self.most_recent_backup_file[0].with_suffix('.zip'),
+                #                              list(self.most_recent_backup_file[0].iterdir())[0].name)
+            else:
+                # noinspection PyTypeChecker
+                ts: float = self.most_recent_backup_file[1]
+            most_recent_datetime = datetime.fromtimestamp(ts)
         else:
             return True
         return self._is_due(most_recent_datetime)
