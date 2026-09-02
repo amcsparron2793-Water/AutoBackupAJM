@@ -517,12 +517,15 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
 
     def _no_backup_cleanup(self, **kwargs):
         do_not_clean_up = kwargs.get('do_not_clean_up', False)
+        # noinspection PyTypeChecker
+        most_recent_backup_file_path: Path = self.most_recent_backup_file[0]
+
         if not do_not_clean_up:
-            if self.original_source_is_zip and self.full_backup_path.is_dir():
-                self._logger.debug(f"Removing unzipped dir: {self.full_backup_path} since it matches source")
-                shutil.rmtree(self.full_backup_path)
+            if self.original_source_is_zip and most_recent_backup_file_path.is_dir():
+                self._logger.debug(f"Removing unzipped dir: {most_recent_backup_file_path} since it matches source")
+                shutil.rmtree(most_recent_backup_file_path)
         else:
-            self._logger.debug(f"Not removing unzipped dir: {self.full_backup_path} "
+            self._logger.debug(f"Not removing unzipped dir: {most_recent_backup_file_path} "
                                f"since do_not_clean_up is True")
 
     def _process_no_backup_due(self, **kwargs):
