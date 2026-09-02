@@ -515,9 +515,8 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
         self._logger.debug(f"full source_path is {self.source_path}, "
                            f"full backup_dir_path_root is {self.backup_dir_path_root}")
 
-    def _process_no_backup_due(self, **kwargs):
+    def _no_backup_cleanup(self, **kwargs):
         do_not_clean_up = kwargs.get('do_not_clean_up', False)
-        self._log_no_backup_due()
         if not do_not_clean_up:
             if self.original_source_is_zip and self.full_backup_path.is_dir():
                 self._logger.debug(f"Removing unzipped dir: {self.full_backup_path} since it matches source")
@@ -525,6 +524,10 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
         else:
             self._logger.debug(f"Not removing unzipped dir: {self.full_backup_path} "
                                f"since do_not_clean_up is True")
+
+    def _process_no_backup_due(self, **kwargs):
+        self._log_no_backup_due()
+        self._no_backup_cleanup(**kwargs)
 
     def _eval_for_and_attempt_backup(self, **kwargs):
         kwargs.setdefault('use_progress_bar', True)
