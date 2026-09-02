@@ -512,8 +512,8 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
 
     def _log_no_backup_due(self, **kwargs):
         print_msg = kwargs.get('print_msg', True)
-        self._logger.debug(f"No backup necessary at {datetime.today()} "
-                           f"for {self.source_path.name}", print_msg=print_msg)
+        self._logger.info(f"No backup necessary at {datetime.today()} "
+                          f"for {self.source_path.name}", print_msg=print_msg)
         self._logger.debug(f"full source_path is {self.source_path}, "
                            f"full backup_dir_path_root is {self.backup_dir_path_root}")
 

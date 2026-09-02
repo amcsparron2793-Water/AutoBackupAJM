@@ -1,3 +1,4 @@
+from logging import getLogger
 from shutil import unpack_archive
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ class AutoBackupDirToDirComparer(DirectoryToDirectoryComparer):
     def __init__(self, source_dir: Path, target_dir: Path, **kwargs):
         super().__init__(source_dir, target_dir, **kwargs)
         self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
+        self.logger.name = self.__class__.__name__
 
 
 class AutoBackupComparerFactory(ComparerFactory):
@@ -22,18 +24,22 @@ class AutoBackupComparerFactory(ComparerFactory):
         return super().inst_comparer_class(source, target, **kwargs)
 
     @classmethod
-    def _detect_and_unzip_archive(cls, target: Any):
+    def _detect_and_unzip_archive(cls, target: Any, **kwargs) -> tuple:
+        logger = kwargs.get('logger', getLogger(__name__))
         was_unzipped = False
         possible_zip_file = Path(target).with_suffix('.zip')
         target_zip_exists = bool([x for x in Path(target).parent.iterdir()
                                   if x == possible_zip_file])
         unzip_target = Path(target).parent / Path(target).stem
         if target_zip_exists:
-            print(f"target_zip_exists: {target_zip_exists}")
-            print(f"Unpacking {possible_zip_file} to {unzip_target}")
+            logger.info(f"target_zip_exists: {target_zip_exists}")
+            logger.debug(f"Unpacking {possible_zip_file} to {unzip_target}")
+
             unpack_archive(possible_zip_file, unzip_target)
             was_unzipped = True
+
             return unzip_target, was_unzipped
+
         return target, was_unzipped
 
     @classmethod
