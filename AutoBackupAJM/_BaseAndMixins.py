@@ -504,14 +504,16 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
             self._logger.exception(f"Backup failed: {e}")
 
     def _log_attempted_backup(self, **kwargs):
+        print_msg = kwargs.get('print_msg', True)
         self._logger.info(f"Attempting backup at {datetime.today()} "
-                          f"for {self.source_path.name}...", print_msg=True)
+                          f"for {self.source_path.name}...", print_msg=print_msg)
         self._logger.debug(f"full source_path is {self.source_path}, "
                            f"full backup_dir_path_root is {self.backup_dir_path_root}")
 
-    def _log_no_backup_due(self):
+    def _log_no_backup_due(self, **kwargs):
+        print_msg = kwargs.get('print_msg', True)
         self._logger.debug(f"No backup necessary at {datetime.today()} "
-                           f"for {self.source_path.name}", print_msg=True)
+                           f"for {self.source_path.name}", print_msg=print_msg)
         self._logger.debug(f"full source_path is {self.source_path}, "
                            f"full backup_dir_path_root is {self.backup_dir_path_root}")
 
@@ -529,7 +531,7 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
                                f"since do_not_clean_up is True")
 
     def _process_no_backup_due(self, **kwargs):
-        self._log_no_backup_due()
+        self._log_no_backup_due(**kwargs)
         self._no_backup_cleanup(**kwargs)
 
     def _eval_for_and_attempt_backup(self, **kwargs):
