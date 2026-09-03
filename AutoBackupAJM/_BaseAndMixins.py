@@ -222,7 +222,7 @@ class _MakeBackupDirPathRootMixin(metaclass=ABCMeta):
 
 class _CopyBytesMixin(metaclass=ABCMeta):
     ZIP_BACKUP_DEFAULT = True
-    CLEANUP_BACKUP_PATH_DEFAULT = False
+    CLEANUP_BACKUP_PATH_DEFAULT = True
 
     def __init__(self):
         super().__init__()
@@ -310,14 +310,7 @@ class _CopyBytesMixin(metaclass=ABCMeta):
         if expected_archive_file_path.is_file():
             self._logger.info(f"Zipped backup successfully: {expected_archive_file_path}", print_msg=True)
 
-        # FIXME: this is NotImplemented because while the cleanup works,
-        #  it causes issues detecting previous backups
         if self.cleanup_backup_path:
-            try:
-                raise NotImplementedError("cleanup_backup_path not implemented yet")
-            except NotImplementedError as e:
-                self._logger.error(e)
-                return
             shutil.rmtree(self.full_backup_path)
             self.backup_was_cleaned = True
             self._write_file_hash_with_backup(**kwargs)

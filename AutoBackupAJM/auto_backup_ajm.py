@@ -107,8 +107,7 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
         return not self.comparer.compare()
 
     def _write_backup_bytes_for_dir(self, progress_bar: Optional['tqdm'] = None, **kwargs):
-        # TODO: this kwarg is not implemented yet, see _CopyBytesMixin._zip_and_clean_backup
-        # kwargs.setdefault('hash_file_path', self.comparer.source_directory_hasher.record_path)
+        kwargs.setdefault('hash_file_path', self.comparer.source_directory_hasher.record_path)
         super()._write_backup_bytes_for_dir(progress_bar, **kwargs)
 
 
