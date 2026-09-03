@@ -52,9 +52,6 @@ class AutoBackupComparerFactory(ComparerFactory):
         if was_unzipped:
             target_is_directory = cls._is_directory_input(target)
 
-        # FIXME: the unzipped directory's create time (BUT NOT THE FILES INSIDE)
-        #  is going to be the same as the current time,
-        #  so we need to set it to the create time of the zip file or the file inside
         if target_is_directory:
             return cls._DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS(
                 source_dir=source,
