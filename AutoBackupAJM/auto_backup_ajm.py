@@ -98,6 +98,8 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
     def source_changed_since_last_backup(self):
         # TODO: need to check the hash file first if it is present in the backup directory.
         #  Then as a secondary method, rehash the backup
+
+        # TODO: use JsonToXXX if there is a hashfile?
         if self.most_recent_backup_file is None:
             # if there isn't a backup at all, then no matter what a backup should be done
             return True
