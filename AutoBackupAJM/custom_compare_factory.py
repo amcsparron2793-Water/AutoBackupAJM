@@ -25,7 +25,7 @@ class AutoBackupComparerFactory(ComparerFactory):
 
     @classmethod
     def _detect_and_unzip_archive(cls, target: Any, **kwargs) -> tuple:
-        logger = kwargs.get('logger', getLogger(__name__))
+        logger = kwargs.get('logger', getLogger(cls.__name__))
         was_unzipped = False
         possible_zip_file = Path(target).with_suffix('.zip')
         target_zip_exists = bool([x for x in Path(target).parent.iterdir()
