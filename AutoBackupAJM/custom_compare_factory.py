@@ -23,40 +23,65 @@ class AutoBackupComparerFactory(ComparerFactory):
             raise FileNotFoundError(f"source file {source} does not exist")
         return super().inst_comparer_class(source, target, **kwargs)
 
+    @classmethod
+    def _target_file_with_ext_exists_in_parent(cls, target: Any, file_suffix: str, **kwargs):
+        possible_file = Path(target).with_suffix(file_suffix)
+        target_file_exists = bool([x for x in Path(target).parent.iterdir()
+                                   if x == possible_file])
+        return target_file_exists, possible_file
+
+    @classmethod
+    def _process_existing_hash_file(cls, hash_file_full_path: Path, **kwargs) -> tuple[Path, bool]:
+        logger = kwargs.setdefault('logger', getLogger(cls.__name__))
+        logger.info(f"target_hash_file_exists: True")
+        logger.debug(f"hash_file_full_path: {hash_file_full_path}")
+
+        has_hash_file = True
+        return hash_file_full_path, has_hash_file
+
+    @classmethod
+    def _process_existing_zip_file(cls, possible_zip_file: Path, target: Path, **kwargs) -> tuple[Path, bool]:
+        logger = kwargs.setdefault('logger', getLogger(cls.__name__))
+        unzip_target = Path(target).parent / Path(target).stem
+
+        logger.info(f"target_zip_exists: True")
+        logger.debug(f"Unpacking {possible_zip_file} to {unzip_target}")
+
+        unpack_archive(possible_zip_file, unzip_target)
+        was_unzipped = True
+
+        return unzip_target, was_unzipped
+
     # TODO: generalize this to be used for any file type so that code from _detect_and_unzip_archive can be reused
     @classmethod
     def _has_hash_file(cls, target: Any, **kwargs):
-        logger = kwargs.get('logger', getLogger(cls.__name__))
+        hash_file_suffix = '.json'
         has_hash_file = False
-        possible_hash_file = Path(target).with_suffix('.json')
-        target_hash_file_exists = bool([x for x in Path(target).parent.iterdir()
-                                        if x == possible_hash_file])
-        hash_file_full_path = Path(target).parent / possible_hash_file
-        if target_hash_file_exists:
-            logger.info(f"target_hash_file_exists: {target_hash_file_exists}")
-            logger.debug(f"hash_file_full_path: {hash_file_full_path}")
 
-            has_hash_file = True
-            return hash_file_full_path, has_hash_file
+        (target_hash_file_exists,
+         possible_hash_file) = cls._target_file_with_ext_exists_in_parent(target,
+                                                                          hash_file_suffix,
+                                                                          **kwargs)
+
+        if target_hash_file_exists:
+            hash_file_full_path = Path(target).parent / possible_hash_file
+
+            return cls._process_existing_hash_file(hash_file_full_path, **kwargs)
 
         return target, has_hash_file
 
     @classmethod
     def _detect_and_unzip_archive(cls, target: Any, **kwargs) -> tuple:
-        logger = kwargs.get('logger', getLogger(cls.__name__))
+        zip_suffix = '.zip'
         was_unzipped = False
-        possible_zip_file = Path(target).with_suffix('.zip')
-        target_zip_exists = bool([x for x in Path(target).parent.iterdir()
-                                  if x == possible_zip_file])
-        unzip_target = Path(target).parent / Path(target).stem
+
+        (target_zip_exists,
+         possible_zip_file) = cls._target_file_with_ext_exists_in_parent(target,
+                                                                         zip_suffix,
+                                                                         **kwargs)
+
         if target_zip_exists:
-            logger.info(f"target_zip_exists: {target_zip_exists}")
-            logger.debug(f"Unpacking {possible_zip_file} to {unzip_target}")
-
-            unpack_archive(possible_zip_file, unzip_target)
-            was_unzipped = True
-
-            return unzip_target, was_unzipped
+            return cls._process_existing_zip_file(possible_zip_file, target, **kwargs)
 
         return target, was_unzipped
 
