@@ -7,27 +7,7 @@ from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
 
 
-class _ComparerNewBase:
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
-        # noinspection PyUnresolvedReferences
-        self.logger.name = self.__class__.__name__
-
-
-class AutoBackupDirToDirComparer(_ComparerNewBase, DirectoryToDirectoryComparer):
-    ...
-
-
-class AutoBackupComparerFactory(ComparerFactory):
-    _DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS = AutoBackupDirToDirComparer
-
-    @classmethod
-    def inst_comparer_class(cls, source: Any, target: Any, **kwargs):
-        if not source.exists():
-            raise FileNotFoundError(f"source file {source} does not exist")
-        return super().inst_comparer_class(source, target, **kwargs)
-
+class _FactoryFileToDirHelpers:
     @classmethod
     def _target_file_with_ext_exists_in_parent(cls, target: Any, file_suffix: str, **kwargs):
         possible_file = Path(target).with_suffix(file_suffix)
@@ -105,8 +85,34 @@ class AutoBackupComparerFactory(ComparerFactory):
             dir_source = source
             json_target = target
             # FIXME: THIS DOES NOT CLEAN UP AFTER ITSELF - dir_source is not deleted after zipping etc.
-            return cls._JSON_SOURCE_DIRECTORY_TARGET_CLS(source_json=json_target, target_dir=dir_source, **kwargs)
+            if hasattr(cls, '_JSON_SOURCE_DIRECTORY_TARGET_CLS'):
+                return getattr(cls, '_JSON_SOURCE_DIRECTORY_TARGET_CLS')(
+                    source_json=json_target, target_dir=dir_source, **kwargs)
+            else:
+                logger.error(f"No _JSON_SOURCE_DIRECTORY_TARGET_CLS")
         return None
+
+
+class _ComparerNewBase:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
+        # noinspection PyUnresolvedReferences
+        self.logger.name = self.__class__.__name__
+
+
+class AutoBackupDirToDirComparer(_ComparerNewBase, DirectoryToDirectoryComparer):
+    ...
+
+
+class AutoBackupComparerFactory(_FactoryFileToDirHelpers, ComparerFactory):
+    _DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS = AutoBackupDirToDirComparer
+
+    @classmethod
+    def inst_comparer_class(cls, source: Any, target: Any, **kwargs):
+        if not source.exists():
+            raise FileNotFoundError(f"source file {source} does not exist")
+        return super().inst_comparer_class(source, target, **kwargs)
 
     @classmethod
     def _directory_src_targets(cls, source: Any, target: Any, **kwargs):
