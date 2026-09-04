@@ -7,11 +7,16 @@ from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
 from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
 
 
-class AutoBackupDirToDirComparer(DirectoryToDirectoryComparer):
-    def __init__(self, source_dir: Path, target_dir: Path, **kwargs):
-        super().__init__(source_dir, target_dir, **kwargs)
+class _ComparerNewBase:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
+        # noinspection PyUnresolvedReferences
         self.logger.name = self.__class__.__name__
+
+
+class AutoBackupDirToDirComparer(_ComparerNewBase, DirectoryToDirectoryComparer):
+    ...
 
 
 class AutoBackupComparerFactory(ComparerFactory):
@@ -42,6 +47,8 @@ class AutoBackupComparerFactory(ComparerFactory):
     @classmethod
     def _process_existing_zip_file(cls, possible_zip_file: Path, target: Path, **kwargs) -> tuple[Path, bool]:
         logger = kwargs.setdefault('logger', getLogger(cls.__name__))
+        # TODO:
+        # do_not_unzip = kwargs.get('do_not_unzip', False)
         unzip_target = Path(target).parent / Path(target).stem
 
         logger.info(f"target_zip_exists: True")
@@ -52,7 +59,6 @@ class AutoBackupComparerFactory(ComparerFactory):
 
         return unzip_target, was_unzipped
 
-    # TODO: generalize this to be used for any file type so that code from _detect_and_unzip_archive can be reused
     @classmethod
     def _has_hash_file(cls, target: Any, **kwargs):
         hash_file_suffix = '.json'
@@ -87,21 +93,25 @@ class AutoBackupComparerFactory(ComparerFactory):
 
     @classmethod
     def _directory_src_targets(cls, source: Any, target: Any, **kwargs):
+        ignore_hash_file = kwargs.get('ignore_hash_file', False)
         target_is_directory = cls._is_directory_input(target)
 
-        # FIXME: THIS IS VERY MUCH IN PROGRESS
-        target, has_hash_file = cls._has_hash_file(target)
-        print(has_hash_file)
-        exit(-1)
-        # FIXME: END IN PROGRESS
-
-        target, was_unzipped = cls._detect_and_unzip_archive(target)
+        target, was_unzipped = cls._detect_and_unzip_archive(target, **kwargs)
         kwargs.setdefault('original_source_is_zip', was_unzipped)
 
         if was_unzipped:
             target_is_directory = cls._is_directory_input(target)
 
         if target_is_directory:
+            target, has_hash_file = cls._has_hash_file(target, **kwargs)
+            if has_hash_file and not ignore_hash_file:
+                # FIXME: this needs to be prettied up.
+                print("has_hash_file")
+                dir_source = source
+                json_target = target
+                # FIXME: THIS DOES NOT CLEAN UP AFTER ITSELF - dir_source is not deleted after zipping etc.
+                return cls._JSON_SOURCE_DIRECTORY_TARGET_CLS(source_json=json_target, target_dir=dir_source, **kwargs)
+
             return cls._DIRECTORY_SOURCE_DIRECTORY_TARGET_CLS(
                 source_dir=source,
                 target_dir=target,
