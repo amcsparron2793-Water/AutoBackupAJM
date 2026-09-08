@@ -469,7 +469,7 @@ class _BaseAutoBackup(_MakeBackupDirPathRootMixin,
         overwrite_question_text = f'Do you wish to overwrite {self.backup_name}'
 
         for f in self.backup_location.iterdir():
-            if f.name == self.backup_name:
+            if f.name == self.backup_name or f.name == Path(self.backup_name).with_suffix('.zip').name:# + '.zip':
                 if not self.force_backup:
                     raise FileExistsError(FEE_text)
                 if self.force_backup and questionary.confirm(overwrite_question_text,

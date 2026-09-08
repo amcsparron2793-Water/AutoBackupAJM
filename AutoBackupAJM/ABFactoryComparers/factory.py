@@ -1,10 +1,11 @@
 from logging import getLogger
-from shutil import unpack_archive
 from pathlib import Path
+from shutil import unpack_archive
 from typing import Any
 
 from MultiHasherMatchAJM.MatchAndRecord import ComparerFactory
-from MultiHasherMatchAJM.MatchAndRecord.hash_comparers import DirectoryToDirectoryComparer
+
+from . import AutoBackupDirToDirComparer
 
 
 class _FactoryFileToDirHelpers:
@@ -91,18 +92,6 @@ class _FactoryFileToDirHelpers:
             else:
                 logger.error(f"No _JSON_SOURCE_DIRECTORY_TARGET_CLS")
         return None
-
-
-class _ComparerNewBase:
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.original_source_is_zip = kwargs.get('original_source_is_zip', False)
-        # noinspection PyUnresolvedReferences
-        self.logger.name = self.__class__.__name__
-
-
-class AutoBackupDirToDirComparer(_ComparerNewBase, DirectoryToDirectoryComparer):
-    ...
 
 
 class AutoBackupComparerFactory(_FactoryFileToDirHelpers, ComparerFactory):

@@ -11,7 +11,7 @@ from hashlib import md5
 from AutoBackupAJM import MISC_PROJECT_DIR
 from AutoBackupAJM._BaseAndMixins import _BaseAutoBackup
 
-from AutoBackupAJM.custom_compare_factory import AutoBackupComparerFactory
+from AutoBackupAJM.ABFactoryComparers.factory import AutoBackupComparerFactory
 
 if TYPE_CHECKING:
     # noinspection PyProtectedMember

@@ -1,7 +1,9 @@
 import pytest
 from pathlib import Path
 import zipfile
-from AutoBackupAJM.custom_compare_factory import AutoBackupComparerFactory, AutoBackupDirToDirComparer
+from AutoBackupAJM.ABFactoryComparers.factory import AutoBackupComparerFactory
+from AutoBackupAJM.ABFactoryComparers.comparers import AutoBackupDirToDirComparer
+
 
 class TestCustomCompareFactory:
     @pytest.fixture
