@@ -115,5 +115,6 @@ class ExternalCompareAutoBackup(_BaseAutoBackup):
 
 if __name__ == "__main__":
     ECAB = ExternalCompareAutoBackup(source_path=Path(MISC_PROJECT_DIR / 'HostedFeatureStorage_Other'),
-                                     backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'))
+                                     backup_dir_path_root=Path(MISC_PROJECT_DIR / 'test_backups'),
+                                     log_level_to_stream='DEBUG')
     ECAB.backup()#force_backup=True)#, cleanup_backup_path=True)

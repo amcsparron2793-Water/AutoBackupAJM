@@ -86,6 +86,7 @@ class _FactoryFileToDirHelpers:
             dir_source = source
             json_target = target
             # FIXME: THIS DOES NOT CLEAN UP AFTER ITSELF - dir_source is not deleted after zipping etc.
+            # TODO: make sure this isn't unnecessarily unzipping the zip file when the hash_file is available.
             if hasattr(cls, '_JSON_SOURCE_DIRECTORY_TARGET_CLS'):
                 return getattr(cls, '_JSON_SOURCE_DIRECTORY_TARGET_CLS')(
                     source_json=json_target, target_dir=dir_source, **kwargs)
@@ -105,10 +106,10 @@ class AutoBackupComparerFactory(_FactoryFileToDirHelpers, ComparerFactory):
 
     @classmethod
     def _directory_src_targets(cls, source: Any, target: Any, **kwargs):
-        print("*************************************************************************************************\n"
-              "IGNORE HASH FILE IS SET TO TRUE BY DEFAULT, THIS MEANS THE DIRECTORY WILL BE REHASHED EVERY TIME.\n"
-              "*************************************************************************************************\n")
-        kwargs.setdefault('ignore_hash_file', True)
+        # print("*************************************************************************************************\n"
+        #       "IGNORE HASH FILE IS SET TO TRUE BY DEFAULT, THIS MEANS THE DIRECTORY WILL BE REHASHED EVERY TIME.\n"
+        #       "*************************************************************************************************\n")
+        kwargs.setdefault('ignore_hash_file', False)
         target_is_directory = cls._is_directory_input(target)
 
         target, was_unzipped = cls._detect_and_unzip_archive(target, **kwargs)
